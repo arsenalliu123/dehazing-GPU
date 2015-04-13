@@ -15,7 +15,7 @@
 #include "opencv2/gpu/gpu.hpp"
 
 using namespace cv;
-
+using namespace gpu;
 
 //Type of Min and Max value
 typedef struct _MinMax
@@ -37,10 +37,10 @@ typedef struct _TransImage
 }TransImage;
 
 void gpu_func(
-		gpu::DevMem2Df mat,
-		gpu::DevMem2Df trans_mat,
+		DevMem2Df mat,
+		DevMem2Df trans_mat,
 		Vec<float, 3> airlight,
-		gpu::DevMem2Df dest,
+		DevMem2Df dest,
 		int _PriorSize,
 		int height,
 		int width,

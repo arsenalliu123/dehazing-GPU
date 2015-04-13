@@ -1,7 +1,7 @@
 #include "dehazing.h"
 
-using namespace std;
 using namespace cv;
+using namespace gpu;
 
 
 /**
@@ -24,12 +24,12 @@ using namespace cv;
 #define mymax(x,y) ((x>y)?x:y)
 
 __global__ void kernel(
-		gpu::DevMem2Df mat,
-		gpu::DevMem2Df trans_mat,
+		DevMem2Df mat,
+		DevMem2Df trans_mat,
 		float airlight1,
 		float airlight2,
 		float airlight3,
-		gpu::DevMem2Df dest,
+		DevMem2Df dest,
 		int height, int width, int t0)
 {
 	unsigned x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -52,10 +52,10 @@ __global__ void kernel(
 
 }
 void gpu_func(
-		gpu::DevMem2Df mat,
-		gpu::DevMem2Df trans_mat,
+		DevMem2Df mat,
+		DevMem2Df trans_mat,
 		Vec<float, 3> airlight,
-		gpu::DevMem2Df dest,
+		DevMem2Df dest,
 		int _PriorSize,
 		int height,
 		int width,
@@ -63,7 +63,7 @@ void gpu_func(
 {
 	dim3 grid(height/_PriorSize+1,width/_PriorSize+1);
 	dim3 block(_PriorSize,_PriorSize);
-    kernel<<<grid,block>>>(
+    	kernel<<<grid,block>>>(
     		mat, trans_mat, airlight[0], airlight[1], airlight[2], dest, height, width, t0);
 }
 
