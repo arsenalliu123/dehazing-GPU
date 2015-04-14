@@ -32,7 +32,8 @@ void dark_channel(
 void air_light(
 		float *image,
 		float *dark,
-		int size,
+		int height,
+		int width,
 		dim3 blocks,
 		dim3 grids
 		);

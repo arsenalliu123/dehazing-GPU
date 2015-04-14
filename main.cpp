@@ -158,17 +158,15 @@ int main(int argc, char * argv[])
 	 */
 
 	//define the block size and grid size
-	dim3 block(16, 16);
-	int grid_size = (int)ceil(double((size) / 256.0));
+	dim3 block(_PriorSize, _PriorSize);
+	int grid_size_x = (int)ceil(double((height) / _PriorSize));
+	int grid_size_y = (int)ceil(double((width) / _PriorSize));
 	//printf("%d", grid_size);
-	dim3 grid(grid_size);
+	dim3 grid(grid_size_x, grid_size_y);
 	dark_channel(gpu_image, dark, height, width, block, grid);
-	/*
 	dim3 block_air(256);
-	dim3 grid_air((int)ceil(double((grid_size) / 256.0)));
-	air_light(gpu_image, dark, size, block_air, grid_air);
-	*/
-	
+	dim3 grid_air((int)ceil(double((grid_size_x*grid_size_y) / 256.0)));
+	air_light(gpu_image, dark, height, width, block_air, grid_air);
 
 	/*
 	 * copy back to CPU memory
