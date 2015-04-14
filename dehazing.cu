@@ -14,7 +14,7 @@
 __global__
 void dark_channel_kernel(float3 *image, float *dark, int height, int width){
 	const int i = blockIdx.x * (blockDim.x * blockDim.y) + width * threadIdx.x + threadIdx.y;
-	extern __shared__ unsigned int min_value[];
+	__shared__ unsigned int *min_value;
 	*min_value = 255;
 	if(i < height*width){
 		unsigned int val = 255 * min(image[i].x, min(image[i].y, image[i].z));
