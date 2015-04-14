@@ -23,7 +23,8 @@
 void dark_channel(
 		float *image,
 		float *dark_channel,
-		int size,
+		int height,
+		int width,
 		dim3 blocks,
 		dim3 grids
 		);

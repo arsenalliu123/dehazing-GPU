@@ -14,8 +14,8 @@ endif
 
 all:
 	$(CXX) $(COMPILE_FLAGS) -c main.cpp -o Debug/main.o $(CFLAGS)
-	#nvcc -c dehazing.cu -o Debug/kernel_gpu.o $(CUDAFLAGS) 
-	$(CXX) $(COMPILE_FLAGS) Debug/main.o -o Debug/dehazing $(LDFLAGS)
+	nvcc -c dehazing.cu -o Debug/kernels.o $(CUDAFLAGS) 
+	$(CXX) $(COMPILE_FLAGS) Debug/main.o Debug/kernels.o -o Debug/dehazing $(LDFLAGS)
 
 clean:
 	rm -f Debug/*.o Debug/dehazing

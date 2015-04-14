@@ -12,24 +12,25 @@
  * dark_channel host wrapper and kernel
  */
 __global__
-void dark_channel_kernel(float3 *image, float *dark, int size){
-	const int i = blockIdx.x * (blockDim.x * blockDim.y) + blockDim.y * threadIdx.x + threadIdx.y;
-	unsigned int min_value = 255;
-	if(i < size){
+void dark_channel_kernel(float3 *image, float *dark, int height, int width){
+	const int i = blockIdx.x * (blockDim.x * blockDim.y) + width * threadIdx.x + threadIdx.y;
+	extern __shared__ unsigned int min_value[];
+	*min_value = 255;
+	if(i < height*width){
 		unsigned int val = 255 * min(image[i].x, min(image[i].y, image[i].z));
-		atomicMin(&min_value, val);
+		atomicMin(min_value, val);
 	}
 	__syncthreads();
 
-	if(i<size){
-		dark[i] = minvalue/255.f;
+	if(i<height*width){
+		dark[i] = (*min_value)/255.f;
 	}
 
 }
 
 
-void dark_channel(float *image,float *dark_channel,int size,dim3 blocks,dim3 grids){
-	dark_channel_kernel<<<grids, blocks>>> ((float3 *)image, dark_channel, size);
+void dark_channel(float *image,float *dark_channel,int height, int width, dim3 blocks,dim3 grids){
+	dark_channel_kernel<<<grids, blocks>>> ((float3 *)image, dark_channel, height, width);
 }
 
 /*
@@ -40,8 +41,8 @@ void dark_channel(float *image,float *dark_channel,int size,dim3 blocks,dim3 gri
 __global__
 void dehazing_img_kernel1(float3 *image, float *dark, int size, float3 *int_image, float *int_dark){
 	const int i = (blockIdx.x * blockDim.x + threadIdx.x) * 256;
-	__shared__ float3 tmp_image[];
-	__shared__ float tmp_dark = (float *)(tmp_image + blockDim.x);
+	extern __shared__ float3 tmp_image[];
+	float *tmp_dark = (float *)(tmp_image + blockDim.x);
 	if(i < size){
 		tmp_image[threadIdx.x] = image[i];
 		tmp_dark[threadIdx.x] = dark[i];
@@ -63,11 +64,11 @@ void dehazing_img_kernel1(float3 *image, float *dark, int size, float3 *int_imag
 }
 
 __global__
-void dehazing_img_kernel2(float3 *image, int size, float3 *int_image, float3 *int_dark){
+void dehazing_img_kernel2(float3 *image, int size, float3 *int_image, float *int_dark){
 
-	__shared__ float3 tmp_image[];
-	__shared__ float tmp_dark = (float *)(tmp_image + blockDim.x);
-	if(i < size){
+	extern __shared__ float3 tmp_image[];
+	float *tmp_dark = (float *)(tmp_image + blockDim.x);
+	if(threadIdx.x < size){
 		tmp_image[threadIdx.x] = int_image[threadIdx.x];
 		tmp_dark[threadIdx.x] = int_dark[threadIdx.x];
 	}
@@ -89,8 +90,8 @@ void dehazing_img_kernel2(float3 *image, int size, float3 *int_image, float3 *in
 void air_light(float *image, float *dark, int size, dim3 blocks, dim3 grids){
 	float3 *int_image = NULL;
 	float *int_dark = NULL;
-	CUDA_CHECK_RETURN(cudaMalloc((void **)(&int_image), sizeof(float3)*grids.x));
-	CUDA_CHECK_RETURN(cudaMalloc((void **)(&int_dark), sizeof(float)*grids.x));
+	cudaMalloc((void **)(&int_image), sizeof(float3)*grids.x);
+	cudaMalloc((void **)(&int_dark), sizeof(float)*grids.x);
 	dehazing_img_kernel1<<<grids, blocks>>> ((float3 *)image, dark, size, int_image, int_dark);
 	dehazing_img_kernel2<<<1, grids>>> ((float3 *)image, size, int_image, int_dark);
 
