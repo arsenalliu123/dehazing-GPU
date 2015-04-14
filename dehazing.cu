@@ -42,7 +42,8 @@ __global__
 void dehazing_img_kernel1(float3 *image, float *dark, int height, int width, float3 *int_image, float *int_dark){
 	const int b_r = (width-1)/15+1;
 	const int b_n = blockIdx.x * blockDim.x + threadIdx.x;
-	const int i = (b_n / b_r + b_n % b_r) * 15;
+	const int i = b_n / b_r * 15 * width + b_n % b_r * 15;
+	//printf("%d %d %d %d\n", b_n, i, threadIdx.x , width*height);
 	extern __shared__ float3 tmp_image[];
 	float *tmp_dark = (float *)(tmp_image + blockDim.x);
 	if(i < width * height){
@@ -67,13 +68,11 @@ void dehazing_img_kernel1(float3 *image, float *dark, int height, int width, flo
 
 __global__
 void dehazing_img_kernel2(float3 *image, int size, float3 *int_image, float *int_dark){
-
+	
 	extern __shared__ float3 tmp_image[];
 	float *tmp_dark = (float *)(tmp_image + blockDim.x);
-	if(threadIdx.x < size){
-		tmp_image[threadIdx.x] = int_image[threadIdx.x];
-		tmp_dark[threadIdx.x] = int_dark[threadIdx.x];
-	}
+	tmp_image[threadIdx.x] = int_image[threadIdx.x];
+	tmp_dark[threadIdx.x] = int_dark[threadIdx.x];
 	__syncthreads();
 	for(unsigned int stride = blockDim.x/2; stride > 0; stride >>= 1){
 		if(threadIdx.x < stride){
@@ -92,10 +91,16 @@ void dehazing_img_kernel2(float3 *image, int size, float3 *int_image, float *int
 void air_light(float *image, float *dark, int height, int width, dim3 blocks, dim3 grids){
 	float3 *int_image = NULL;
 	float *int_dark = NULL;
+	//printf("%d\n", grids.x);
 	cudaMalloc((void **)(&int_image), sizeof(float3)*grids.x);
 	cudaMalloc((void **)(&int_dark), sizeof(float)*grids.x);
-	dehazing_img_kernel1<<<grids, blocks>>> ((float3 *)image, dark, height, width, int_image, int_dark);
-	//dehazing_img_kernel2<<<1, grids>>> ((float3 *)image, size, int_image, int_dark);
+	float *xx = (float *)malloc(sizeof(float)*height*width);
+	CUDA_CHECK_RETURN(cudaMemcpy(xx, dark, height * width * sizeof(float), cudaMemcpyDeviceToHost));
+	//for(int i=0;i<height*width;i++){printf("%.2f ", xx[i]);}
+	int shared_size_1 = blocks.x*(sizeof(float3)+sizeof(float));
+	int shared_size_2 = grids.x*(sizeof(float3)+sizeof(float));
+	dehazing_img_kernel1<<<grids, blocks, shared_size_1>>> ((float3 *)image, dark, height, width, int_image, int_dark);
+	dehazing_img_kernel2<<<1, grids, shared_size_2>>> ((float3 *)image, height*width, int_image, int_dark);
 
 }
 

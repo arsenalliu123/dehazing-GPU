@@ -31,6 +31,7 @@ using namespace cv;
 using namespace std;
 
 // Define Const
+clock_t start , finish ;
 float lambda=0.0001;	//lambda
 int _PriorSize=15;		//the window size of dark channel
 double _topbright=0.01;//the top rate of bright pixel in dark channel
@@ -104,6 +105,18 @@ void processArgs(int argc, char * argv[])
 	}
 }
 
+void finish_clock(){
+	finish=clock();
+	double duration=( double )( finish - start )/ CLOCKS_PER_SEC ;
+	cout<<"Time Cost: "<<duration<<"s"<<endl;
+	waitKey(1000);
+	cout<<endl;
+}
+
+void start_clock(){
+	start=clock();
+}
+
 //Main Function
 int main(int argc, char * argv[])
 {
@@ -117,9 +130,8 @@ int main(int argc, char * argv[])
 		strcpy(img_name,filename);
 	}
 
-	//clock_t start , finish ;
-	//double duration1,duration2,duration3,duration4,duration5,duration6,duration7;
-
+	cout<<"Reading Image ..."<<endl;
+	start_clock();
 	//load into a openCV's mat object
 	Mat *img = read_image();
 
@@ -149,7 +161,7 @@ int main(int argc, char * argv[])
 	CUDA_CHECK_RETURN(cudaMalloc((void **)(&dark), size * sizeof(float)));
 
 	CUDA_CHECK_RETURN(cudaMemcpy(gpu_image, cpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyHostToDevice));
-
+	finish_clock();
 	/*
 	 * Dehazing Algorithm:
 	 * 1. Calculate Dark Prior
@@ -158,16 +170,22 @@ int main(int argc, char * argv[])
 	 */
 
 	//define the block size and grid size
+	cout<<"Calculating Dark Channel Prior ..."<<endl;
+	start_clock();
 	dim3 block(_PriorSize, _PriorSize);
 	int grid_size_x = (int)ceil(double((height) / _PriorSize));
 	int grid_size_y = (int)ceil(double((width) / _PriorSize));
 	//printf("%d", grid_size);
 	dim3 grid(grid_size_x, grid_size_y);
 	dark_channel(gpu_image, dark, height, width, block, grid);
-	dim3 block_air(256);
-	dim3 grid_air((int)ceil(double((grid_size_x*grid_size_y) / 256.0)));
-	air_light(gpu_image, dark, height, width, block_air, grid_air);
+	finish_clock();
 
+	cout<<"Calculating Airlight ..."<<endl;
+	start_clock();
+	dim3 block_air(300);
+	dim3 grid_air((int)ceil(double(grid_size_x*grid_size_y) / block_air.x));
+	air_light(gpu_image, dark, height, width, block_air, grid_air);
+	finish_clock();
 	/*
 	 * copy back to CPU memory
 	 */
