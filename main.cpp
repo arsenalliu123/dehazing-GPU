@@ -5,7 +5,11 @@
  *      Author: river
  */
 
-#include <sys/io.h>
+#ifdef __APPLE__
+        #include <sys/uio.h>
+#else
+        #include <sys/io.h>
+#endif
 #include "iostream"
 #include "time.h"
 #include "string.h"
@@ -14,6 +18,14 @@
 #include "limits.h"
 #include <unistd.h>
 #include "dehazing.h"
+
+#define CUDA_CHECK_RETURN(value) {											\
+	cudaError_t _m_cudaStat = value;										\
+	if (_m_cudaStat != cudaSuccess) {										\
+		fprintf(stderr, "Error %s at line %d in file %s\n",					\
+				cudaGetErrorString(_m_cudaStat), __LINE__, __FILE__);		\
+		exit(1);															\
+	} }
 
 using namespace cv;
 using namespace std;
@@ -34,11 +46,43 @@ int idx_l=0;					//total number of non-zero value of L
 // Define fast convert table
 int convert_table[25];
 
-char img_name[100]="example.bmp";
-char trans_name[100]="printMatInfosdfasdfasdf;";
-char out_name[100]="";
+char img_name[100]="1.png";
+char trans_name[100]="2.png";
+char out_name[100]="3.png";
 
-//Process Args from CMD
+/*
+ * dehazing procedures
+ */
+
+//read from img_name
+Mat read_image(){
+	Mat img=imread(img_name, CV_LOAD_IMAGE_COLOR);
+	height = img.rows;
+	width = img.cols;
+	size = img.rows*img.cols;
+	Mat real_img(img.rows,img.cols,CV_32FC3);
+	img.convertTo(real_img,CV_32FC3);
+	real_img=real_img/255;
+	return real_img;
+}
+
+//************* Utility Functions **********
+//Print Matrix
+void printMat(char * name,Mat m)
+{
+	cout<<name<<"\n"<<m<<endl;
+}
+
+//Print Matrix Information
+void printMatInfo(char * name,Mat m)
+{
+	cout<<name<<":"<<endl;
+	cout<<"\t"<<"cols="<<m.cols<<endl;
+	cout<<"\t"<<"rows="<<m.rows<<endl;
+	cout<<"\t"<<"channels="<<m.channels()<<endl;
+}
+
+//Process Args from command line
 void processArgs(int argc, char * argv[])
 {
 	cout<<"This is a dehazing algorithm"<<endl;
@@ -60,6 +104,7 @@ void processArgs(int argc, char * argv[])
 		}
 	}
 }
+
 //Main Function
 int main(int argc, char * argv[])
 {
@@ -71,21 +116,71 @@ int main(int argc, char * argv[])
 	{
 		cout<<"The image "<<img_name<<" don't exist."<<endl<<"Please enter another one:"<<endl;
 		cin>>filename;
-		//img_name=filename;
+		strcpy(img_name,filename);
 	}
 
 	clock_t start , finish ;
 	//double duration1,duration2,duration3,duration4,duration5,duration6,duration7;
 
-	Mat img=imread(img_name, CV_LOAD_IMAGE_COLOR);
-	img = img/255;
-	height = img.rows;
-	width = img.cols;
-	size = img.rows*img.cols;
-	Mat real_img(img.rows,img.cols,CV_32FC3);
-	img.convertTo(real_img,CV_32FC3);
-	real_img=real_img/255;
+	//load into a openCV's mat object
+	Mat img = read_image();
 
+	/* load img into CPU float array and GPU float array */
+	float* cpu_image = new float[(size+1) * 3];
+	if (!cpu_image)
+	{
+		std::cout << "ERROR: Failed to allocate memory" << std::endl;
+		return -1;
+	}
+	for (int i = 0; i < height; i++){
+		for(int j = 0; j < width; j++)
+		{
+			for(int k = 0; k < 3; k++)
+				cpu_image[i * width + j + k] = img.at<float>(i,j,k);
+		}
+	}
+	cpu_image[size] = 0;
+	cpu_image[size+1] = 0;
+	cpu_image[size+2] = 0;
+
+	float *gpu_image = NULL;
+	float *dark_channel = NULL;
+	//size+1 for storing the airlight
+	CUDA_CHECK_RETURN(cudaMalloc((void **)(&gpu_image), ((size+1) * 3) * sizeof(float)));
+	CUDA_CHECK_RETURN(cudaMalloc((void **)(&dark_channel), size * sizeof(float)));
+
+	CUDA_CHECK_RETURN(cudaMemcpy(gpu_image, cpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyHostToDevice));
+
+	/*
+	 * Dehazing Algorithm:
+	 * 1. Calculate Dark Prior
+	 * 2. Calculate Air Light
+	 * 3. Get the image
+	 */
+
+	//define the block size and grid size
+	int grid_size = (int)ceil(double((size) / 256.0));
+
+	dim3 block(16, 16);
+	dim3 grid(grid_size);
+	dark_channel(gpu_image, dark_channel, size, block, grid);
+
+	dim3 block_air(256);
+	dim3 grid_air((int)ceil(double((grid_size) / 256.0)));
+	air_light(gpu_image, dark_channel, size, block_air, grid_air);
+
+	/*
+	 * copy back to CPU memory
+	 */
+	CUDA_CHECK_RETURN(cudaMemcpy(cpu_image, gpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyDeviceToHost));
+	CUDA_CHECK_RETURN(cudaFree(gpu_image));
+
+	Mat dest(height, width, CV_32FC3);
+	dest.data = (uchar *)cpu_image;
+
+	imwrite(out_name, dest*255);
+
+	/*
 	gpu::GpuMat gpu_img(real_img);
 	gpu::GpuMat gpu_channel[3];
 	split(gpu_img, gpu_channel);
@@ -112,13 +207,7 @@ int main(int argc, char * argv[])
 	gpu::GpuMat gpu_trans_img(real_trans_img);
 	gpu::GpuMat gpu_dest(height, width, CV_32FC3);
 	//gpu_func(gpu_img, gpu_trans_img, airlight, gpu_dest,_PriorSize,height,width,t0);
+	*/
 
-	Mat dest(height, width, CV_32FC3);
-	gpu_dest.download(dest);
-
-	imwrite(out_name,dest*255);
 	return 0;
 }
-
-
-

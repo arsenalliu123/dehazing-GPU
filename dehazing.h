@@ -11,41 +11,30 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
-#include "opencv2/opencv.hpp"
-#include "opencv2/gpu/gpu.hpp"
+#define CUDA_CHECK_RETURN(value) {											\
+	cudaError_t _m_cudaStat = value;										\
+	if (_m_cudaStat != cudaSuccess) {										\
+		fprintf(stderr, "Error %s at line %d in file %s\n",					\
+				cudaGetErrorString(_m_cudaStat), __LINE__, __FILE__);		\
+		exit(1);															\
+	} }
 
-using namespace cv;
-using namespace gpu;
 
-//Type of Min and Max value
-typedef struct _MinMax
-{
-	double min;
-	double max;
-}MinMax;
+void dark_channel(
+		float *image,
+		float *dark_channel,
+		int size,
+		dim3 blocks,
+		dim3 grids
+		);
 
-typedef struct _Image
-{
-	float blue;
-	float red;
-	float green;
-}Image;
-
-typedef struct _TransImage
-{
-	float grey;
-}TransImage;
-
-void gpu_func(
-		DevMem2Df mat,
-		DevMem2Df trans_mat,
-		Vec<float, 3> airlight,
-		DevMem2Df dest,
-		int _PriorSize,
-		int height,
-		int width,
-		int t0);
-
+void air_light(
+		float *image,
+		float *dark,
+		int size,
+		dim3 blocks,
+		dim3 grids
+		);
 
 #endif /* DEHAZING_H_ */
 
