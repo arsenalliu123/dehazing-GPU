@@ -41,14 +41,7 @@ int height=0;			//image Height
 int width=0;			//image Width
 int size=0;			//total number of pixels
 
-// Define Rows and Cols index of L
-int idx_l=0;					//total number of non-zero value of L
-
-// Define fast convert table
-int convert_table[25];
-
 char img_name[100]="1.png";
-char trans_name[100]="2.png";
 char out_name[100]="3.png";
 
 /*
@@ -88,27 +81,29 @@ void processArgs(int argc, char * argv[])
 {
 	for(int i=1;i<argc;i++)
 	{
-		if(strcmp(argv[i],"-o")==0)
-		{
+		if(strcmp(argv[i], "-h")==0){
+			printf("usage: -o output -i input.\n");
+			exit(1);
+		}
+		else if(strcmp(argv[i],"-o")==0){
 			i++;
 			strcpy(out_name,argv[i]);
 		}
-		else if(strcmp(argv[i],"-t")==0)
-		{
+		else if(strcmp(argv[i],"-i")==0){
 			i++;
-			strcpy(trans_name,argv[i]);
-		}
-		else
-		{
 			strcpy(img_name,argv[i]);
+		}
+		else{
+			printf("use -h to see usage.\n");
+			exit(1);
 		}
 	}
 }
 
 void finish_clock(){
 	finish=clock();
-	double duration=( double )( finish - start )/ CLOCKS_PER_SEC ;
-	cout<<"Time Cost: "<<duration<<"s"<<endl;
+	double duration=( double )( finish - start )/ CLOCKS_PER_SEC * 1000;
+	cout<<"Time Cost: "<<duration<<"ms"<<endl;
 	waitKey(1000);
 	cout<<endl;
 }
