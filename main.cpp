@@ -182,8 +182,8 @@ int main(int argc, char * argv[])
 
 	cout<<"Calculating Airlight ..."<<endl;
 	start_clock();
-	dim3 block_air(300);
-	dim3 grid_air((int)ceil(double(grid_size_x*grid_size_y) / block_air.x));
+	dim3 block_air(1024);
+	dim3 grid_air((int)ceil(double(size) / block_air.x));
 	air_light(gpu_image, dark, height, width, block_air, grid_air);
 	finish_clock();
 	/*
