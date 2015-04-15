@@ -19,7 +19,7 @@
 		exit(1);															\
 	} }
 
-
+//dark channel prior
 void dark_channel(
 		float *image,
 		float *dark_channel,
@@ -29,6 +29,7 @@ void dark_channel(
 		dim3 grids
 		);
 
+//air light (RGB of maximum dark prior channle pixel)
 void air_light(
 		float *image,
 		float *dark,

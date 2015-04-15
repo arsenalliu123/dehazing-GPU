@@ -12,6 +12,7 @@
 /*
  * dark_channel host wrapper and kernel
  */
+//first kernel calculate min of RGB
 __global__
 void dark_channel_kernel(float3 *image, float *dark, int height, int width){
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -22,6 +23,7 @@ void dark_channel_kernel(float3 *image, float *dark, int height, int width){
 	}
 }
 
+//second kernel calculate min of 15 X 15 ceil
 __global__
 void prior_kernel(float *dark, int height, int width, int window){
 	extern __shared__ float buffer[];
@@ -85,7 +87,7 @@ void dark_channel(float *image,float *dark_channel,int height, int width, dim3 b
  * air_light host wrapper and kernel
  */
 
-
+//first kernel reduce to < 1024 values for next kernel
 __global__
 void dehazing_img_kernel1(
 		float3 *image, float *dark,
@@ -115,6 +117,7 @@ void dehazing_img_kernel1(
 	}
 }
 
+//calculate air light
 __global__
 void dehazing_img_kernel2(float3 *image, int size, float3 *int_image, float *int_dark){
 

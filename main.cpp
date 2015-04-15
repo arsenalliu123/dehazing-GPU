@@ -196,6 +196,7 @@ int main(int argc, char * argv[])
 		cpu_image[i*3+1] *= 255.f;
 		cpu_image[i*3+2] *= 255.f;
 	}
+	printf("%.2f %.2f %.2f\n", cpu_image[size*3], cpu_image[size*3+1],cpu_image[size*3+2]);
 
 	Mat dest(height, width, CV_32FC3, cpu_image);
 	imwrite(out_name, dest);
