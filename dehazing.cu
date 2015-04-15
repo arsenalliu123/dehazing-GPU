@@ -35,28 +35,38 @@ void prior_kernel(float *dark, int height, int width, int window){
 		buffer[si] = dark[i];
 		if(threadIdx.x < window && IN_GRAPH(x-window, y, height, width) ){
 			buffer[si - (blockDim.y + window * 2) * window] = dark[i - window * width];
-		}
-		if(threadIdx.y < window && IN_GRAPH(x, y-window, height, width) ){
-			buffer[si - window] = dark[i - window];
+			if(threadIdx.y < window &&
+				IN_GRAPH(x-window, y-window, height, width) ){
+				buffer[si - (blockDim.y + window * 2) * window - window]
+			       = dark[i - window * width - window];
+			}
+			if(threadIdx.y >= blockDim.y - window &&
+				IN_GRAPH(x-window, y+window, height, width) ){
+				buffer[si - (blockDim.y + window * 2) * window + window]
+			       = dark[i - window * width + window];
+			}
 		}
 		if(threadIdx.x >= blockDim.x - window && IN_GRAPH(x+window, y, height, width) ){
 			buffer[si + (blockDim.y + window * 2) * window] = dark[i + window * width];
+			if(threadIdx.y >= blockDim.y - window &&
+				IN_GRAPH(x+window, y+window, height, width) ){
+					buffer[si + (blockDim.y + window * 2) * window + window]
+					       = dark[i + window * width + window];
+			}
+			if(threadIdx.y < window &&
+				IN_GRAPH(x+window, y-window, height, width) ){
+					buffer[si + (blockDim.y + window * 2) * window - window]
+					       = dark[i + window * width - window];
+			}
+
 		}
 		if(threadIdx.y >= blockDim.y - window && IN_GRAPH(x, y+window, height, width) ){
 			buffer[si + window] = dark[i + window];
 		}
-		if(threadIdx.x < window &&
-				threadIdx.y < window &&
-				IN_GRAPH(x-window, y-window, height, width) ){
-			buffer[si - (blockDim.y + window * 2) * window - window]
-			       = dark[i - window * width - window];
+		if(threadIdx.y < window && IN_GRAPH(x, y-window, height, width) ){
+			buffer[si - window] = dark[i - window];
 		}
-		if(threadIdx.x >= blockDim.x - window &&
-				threadIdx.y >= blockDim.y - window &&
-				IN_GRAPH(x+window, y+window, height, width) ){
-					buffer[si + (blockDim.y + window * 2) * window + window]
-					       = dark[i + window * width + window];
-		}
+
 		__syncthreads();
 		
 		float minval = 1.0;
