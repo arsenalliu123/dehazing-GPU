@@ -193,9 +193,9 @@ int main(int argc, char * argv[])
    //////////////////
     cout<<"Calculating transmission ..."<<endl;
     start_clock();
-    dim3 block(_PriorSize, _PriorSize);
-    int grid_size_x = (int)ceil(double((height) / _PriorSize));
-    int grid_size_y = (int)ceil(double((width) / _PriorSize));
+    block(_PriorSize, _PriorSize);
+    grid_size_x = (int)ceil(double((height) / _PriorSize));
+    grid_size_y = (int)ceil(double((width) / _PriorSize));
     transmission(gpu_image, ori_image, transmission, height, width, block, grid);//t: transmission
     finish_clock();
     /////////////////
@@ -203,9 +203,9 @@ int main(int argc, char * argv[])
     //////////////////
     cout<<"Calculating dehaze ..."<<endl;
     start_clock();
-    dim3 block(_PriorSize, _PriorSize);
-    int grid_size_x = (int)ceil(double((height) / _PriorSize));
-    int grid_size_y = (int)ceil(double((width) / _PriorSize));
+    block(_PriorSize, _PriorSize);
+    grid_size_x = (int)ceil(double((height) / _PriorSize));
+    grid_size_y = (int)ceil(double((width) / _PriorSize));
     dehaze(ori_image, gpu_image, dark, transmission, height, width, block, grid);//dehaze image: ori_image
     finish_clock();
     //////////////////
