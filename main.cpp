@@ -153,9 +153,17 @@ int main(int argc, char * argv[])
 	float *dark = NULL;
 	//size+1 for storing the airlight
 	CUDA_CHECK_RETURN(cudaMalloc((void **)(&gpu_image), ((size+1) * 3) * sizeof(float)));
+
 	CUDA_CHECK_RETURN(cudaMalloc((void **)(&dark), size * sizeof(float)));
 
 	CUDA_CHECK_RETURN(cudaMemcpy(gpu_image, cpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyHostToDevice));
+    
+    ////////////////
+    float *ori_image = gpu_image;
+    float *transmission = NULL;
+    CUDA_CHECK_RETURN(cudaMalloc((void **)(&gpu_image), size * sizeof(float)));
+    /////////////////
+
 	finish_clock();
 	/*
 	 * Dehazing Algorithm:
@@ -172,15 +180,36 @@ int main(int argc, char * argv[])
 	int grid_size_y = (int)ceil(double((width) / _PriorSize));
 	//printf("%d", grid_size);
 	dim3 grid(grid_size_x, grid_size_y);
-	dark_channel(gpu_image, dark, height, width, block, grid);
+	dark_channel(gpu_image, dark, height, width, block, grid);//dark channel: dark
 	finish_clock();
 
 	cout<<"Calculating Airlight ..."<<endl;
 	start_clock();
 	dim3 block_air(1024);
 	dim3 grid_air((int)ceil(double(size) / block_air.x));
-	air_light(gpu_image, dark, height, width, block_air, grid_air);
+	air_light(gpu_image, dark, height, width, block_air, grid_air);//airlight: gpu_image
 	finish_clock();
+    
+   //////////////////
+    cout<<"Calculating transmission ..."<<endl;
+    start_clock();
+    dim3 block(_PriorSize, _PriorSize);
+    int grid_size_x = (int)ceil(double((height) / _PriorSize));
+    int grid_size_y = (int)ceil(double((width) / _PriorSize));
+    transmission(gpu_image, ori_image, transmission, height, width, block, grid);//t: transmission
+    finish_clock();
+    /////////////////
+    
+    //////////////////
+    cout<<"Calculating dehaze ..."<<endl;
+    start_clock();
+    dim3 block(_PriorSize, _PriorSize);
+    int grid_size_x = (int)ceil(double((height) / _PriorSize));
+    int grid_size_y = (int)ceil(double((width) / _PriorSize));
+    dehaze(ori_image, gpu_image, dark, transmission, height, width, block, grid);//dehaze image: ori_image
+    finish_clock();
+    //////////////////
+    
 	/*
 	 * copy back to CPU memory
 	 */

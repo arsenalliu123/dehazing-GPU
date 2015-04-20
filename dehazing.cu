@@ -166,4 +166,40 @@ void air_light(float *image, float *dark, int height, int width, dim3 blocks, di
 
 }
 
+__global__
+void transmission_kernel(float3 *air_light_image, float3 *ori_image, float transmission, int height, int width){
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int i = x * width + y;
+	if(x < height && y < width){
+		tx = ori_image[i].x/air_light_image[i].x;
+		ty = ori_image[i].y/air_light_image[i].y;
+		tz = ori_image[i].z/air_light_image[i].z;
+		transmission[i] = 1 - 0.75*min(tx, min(ty, tz));
+	}
+}
 
+void transmission(float3 *air_light_image,float3 *ori_image, float3 *t, int height, int width, dim3 blocks,dim3 grids){
+	transmission_kernel<<<grids, blocks>>> ((float3 *)air_light_image, ori_image, transmission, height, width);
+	int window = 7;
+	int shared_size = (blocks.x + window * 2) * (blocks.y + window * 2) * sizeof(float);
+	prior_kernel<<<grids, blocks, shared_size>>>(transmission, height, width, window);
+}
+
+__global__
+void dehaze_kernel(float3 ori_image, float3 *air_light_image, float *dark, float t, int height, int width){
+	float *tmp_result = air_light_image;
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int i = x * width + y;
+	if(x < height && y < width){
+		tmp_result[i].x = (ori_image[i].x - air_light_image[i].x*(1-t[i])) / t[i];
+		tmp_result[i].y = (ori_image[i].y - air_light_image[i].y*(1-t[i])) / t[i];
+		tmp_result[i].z = (ori_image[i].z - air_light_image[i].z*(1-t[i])) / t[i];
+		ori_image[i] = tmp_result[i];
+	}
+}
+
+void dehaze(float3 *ori_image, float *air_light_image,float *dark, float *t, int height, int width, dim3 blocks,dim3 grids){
+	dehaze_kernel<<<grids, blocks>>> (ori_image, air_light_image, dark, t, height, width);
+}
