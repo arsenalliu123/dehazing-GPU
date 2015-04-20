@@ -167,7 +167,7 @@ void air_light(float *image, float *dark, int height, int width, dim3 blocks, di
 }
 
 __global__
-void transmission_kernel(float3 *image, float *transmission, int height, int width){
+void transmission1_kernel(float3 *image, float *t, int height, int width){
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
@@ -176,15 +176,81 @@ void transmission_kernel(float3 *image, float *transmission, int height, int wid
 		tx = image[i].x/image[height*width].x;
 		ty = image[i].y/image[height*width].y;
 		tz = image[i].z/image[height*width].z;
-		transmission[i] = min(tx, min(ty, tz));
+		t[i] = min(tx, min(ty, tz));
 	}
 }
 
+__global__
+void transmission2_kernel(float *dark, int height, int width, int window){
+	extern __shared__ float buffer[];
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int i = x * width + y;
+	if(x < height && y < width){
+		const int si = (threadIdx.x + window) * (blockDim.y + window * 2) + threadIdx.y + window;
+		buffer[si] = dark[i];
+		if(threadIdx.x < window && IN_GRAPH(x-window, y, height, width) ){
+			buffer[si - (blockDim.y + window * 2) * window] = dark[i - window * width];
+			if(threadIdx.y < window &&
+				IN_GRAPH(x-window, y-window, height, width) ){
+				buffer[si - (blockDim.y + window * 2) * window - window]
+			       = dark[i - window * width - window];
+			}
+			if(threadIdx.y >= blockDim.y - window &&
+				IN_GRAPH(x-window, y+window, height, width) ){
+				buffer[si - (blockDim.y + window * 2) * window + window]
+			       = dark[i - window * width + window];
+			}
+		}
+		if(threadIdx.x >= blockDim.x - window && IN_GRAPH(x+window, y, height, width) ){
+			buffer[si + (blockDim.y + window * 2) * window] = dark[i + window * width];
+			if(threadIdx.y >= blockDim.y - window &&
+				IN_GRAPH(x+window, y+window, height, width) ){
+					buffer[si + (blockDim.y + window * 2) * window + window]
+					       = dark[i + window * width + window];
+			}
+			if(threadIdx.y < window &&
+				IN_GRAPH(x+window, y-window, height, width) ){
+					buffer[si + (blockDim.y + window * 2) * window - window]
+					       = dark[i + window * width - window];
+			}
+
+		}
+		if(threadIdx.y >= blockDim.y - window && IN_GRAPH(x, y+window, height, width) ){
+			buffer[si + window] = dark[i + window];
+		}
+		if(threadIdx.y < window && IN_GRAPH(x, y-window, height, width) ){
+			buffer[si - window] = dark[i - window];
+		}
+
+		__syncthreads();
+		
+		float minval = 1.0;
+		for(int startx = 0; startx < window * 2 + 1; startx++){
+			for(int starty = 0; starty < window * 2 + 1; starty++){
+				if(IN_GRAPH(x-window+startx, y-window+starty, height, width)){
+				minval = min(
+						buffer[
+						       (threadIdx.x+startx)*
+						       (blockDim.y + window * 2) +
+						       threadIdx.y + starty], minval);
+				}
+			}
+		}
+		dark[i] = 1 - 0.95*minval;
+
+	}
+}
+
+
+
+
 void transmission(float *image, float *t, int height, int width, dim3 blocks,dim3 grids){
-	transmission_kernel<<<grids, blocks>>> ((float3 *)image, t, height, width);
+	transmission1_kernel<<<grids, blocks>>> ((float3 *)image, t, height, width);
 	int window = 7;
 	int shared_size = (blocks.x + window * 2) * (blocks.y + window * 2) * sizeof(float);
-	prior_kernel<<<grids, blocks, shared_size>>>(t, height, width, window);
+	transmission2_kernel<<<grids, blocks, shared_size>>>(t, height, width, window);
+	//transmission2_kernel<<<grids, blocks>>> ((float3 *)image, t, height, width);
 }
 
 __global__
