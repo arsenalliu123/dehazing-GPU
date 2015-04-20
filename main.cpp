@@ -159,9 +159,9 @@ int main(int argc, char * argv[])
 	CUDA_CHECK_RETURN(cudaMemcpy(gpu_image, cpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyHostToDevice));
     
     ////////////////
-    float *ori_image = gpu_image;
+    //float *ori_image = gpu_image;
     float *transmission = NULL;
-    CUDA_CHECK_RETURN(cudaMalloc((void **)(&gpu_image), size * sizeof(float)));
+    CUDA_CHECK_RETURN(cudaMalloc((void **)(&transmission), size * sizeof(float)));
     /////////////////
 
 	finish_clock();
@@ -187,7 +187,7 @@ int main(int argc, char * argv[])
 	start_clock();
 	dim3 block_air(1024);
 	dim3 grid_air((int)ceil(double(size) / block_air.x));
-	air_light(gpu_image, dark, height, width, block_air, grid_air);//airlight: gpu_image
+	air_light(gpu_image, dark, height, width, block_air, grid_air);//airlight: gpu_image[height*width]
 	finish_clock();
     
    //////////////////
@@ -196,7 +196,7 @@ int main(int argc, char * argv[])
     block(_PriorSize, _PriorSize);
     grid_size_x = (int)ceil(double((height) / _PriorSize));
     grid_size_y = (int)ceil(double((width) / _PriorSize));
-    transmission(gpu_image, ori_image, transmission, height, width, block, grid);//t: transmission
+    transmission(gpu_image, transmission, height, width, block, grid);//t: transmission
     finish_clock();
     /////////////////
     
@@ -206,7 +206,7 @@ int main(int argc, char * argv[])
     block(_PriorSize, _PriorSize);
     grid_size_x = (int)ceil(double((height) / _PriorSize));
     grid_size_y = (int)ceil(double((width) / _PriorSize));
-    dehaze(ori_image, gpu_image, dark, transmission, height, width, block, grid);//dehaze image: ori_image
+    dehaze(gpu_image, dark, transmission, height, width, block, grid);//dehaze image: ori_image
     finish_clock();
     //////////////////
     
