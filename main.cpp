@@ -43,7 +43,7 @@ int size=0;			//total number of pixels
 
 char img_name[100]="1.png";
 char out_name[100]="3.png";
-
+char dark_name[100]="4.png";
 /*
  * dehazing procedures
  */
@@ -92,6 +92,10 @@ void processArgs(int argc, char * argv[])
 		else if(strcmp(argv[i],"-i")==0){
 			i++;
 			strcpy(img_name,argv[i]);
+		}
+		else if(strcmp(argv[i],"-d")==0){
+			i++;
+			strcpy(dark_name,argv[i]);
 		}
 		else{
 			printf("use -h to see usage.\n");
@@ -205,16 +209,22 @@ int main(int argc, char * argv[])
 	/*
 	 * copy back to CPU memory
 	 */
+	float *dark_image;
+	dark_image = (float *)malloc(size * sizeof(float));
+	CUDA_CHECK_RETURN(cudaMemcpy(dark_image, dark, size * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaMemcpy(cpu_image, gpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(gpu_image));
 	for(int i=0;i<size;i++){
 		cpu_image[i*3] *= 255.f;
 		cpu_image[i*3+1] *= 255.f;
 		cpu_image[i*3+2] *= 255.f;
+		dark_image[i] *= 255.f;
 	}
 
 	Mat dest(height, width, CV_32FC3, cpu_image);
+	Mat dark_dest(height, width, CV_32FC1, dark_image);
+	
 	imwrite(out_name, dest);
-
+	imwrite(dark_name, dark_dest);
 	return 0;
 }
