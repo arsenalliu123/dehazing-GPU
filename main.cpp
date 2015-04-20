@@ -160,8 +160,8 @@ int main(int argc, char * argv[])
     
     ////////////////
     //float *ori_image = gpu_image;
-    float *transmission = NULL;
-    CUDA_CHECK_RETURN(cudaMalloc((void **)(&transmission), size * sizeof(float)));
+    float *trans = NULL;
+    CUDA_CHECK_RETURN(cudaMalloc((void **)(&trans), size * sizeof(float)));
     /////////////////
 
 	finish_clock();
@@ -175,11 +175,13 @@ int main(int argc, char * argv[])
 	//define the block size and grid size
 	cout<<"Calculating Dark Channel Prior ..."<<endl;
 	start_clock();
+		
 	dim3 block(_PriorSize, _PriorSize);
+	
 	int grid_size_x = (int)ceil(double((height) / _PriorSize));
 	int grid_size_y = (int)ceil(double((width) / _PriorSize));
-	//printf("%d", grid_size);
 	dim3 grid(grid_size_x, grid_size_y);
+	
 	dark_channel(gpu_image, dark, height, width, block, grid);//dark channel: dark
 	finish_clock();
 
@@ -190,25 +192,15 @@ int main(int argc, char * argv[])
 	air_light(gpu_image, dark, height, width, block_air, grid_air);//airlight: gpu_image[height*width]
 	finish_clock();
     
-   //////////////////
-    cout<<"Calculating transmission ..."<<endl;
-    start_clock();
-    block(_PriorSize, _PriorSize);
-    grid_size_x = (int)ceil(double((height) / _PriorSize));
-    grid_size_y = (int)ceil(double((width) / _PriorSize));
-    transmission(gpu_image, transmission, height, width, block, grid);//t: transmission
-    finish_clock();
-    /////////////////
+	cout<<"Calculating transmission ..."<<endl;
+    	start_clock();
+    	transmission(gpu_image, trans, height, width, block, grid);//t: transmission
+    	finish_clock();
     
-    //////////////////
-    cout<<"Calculating dehaze ..."<<endl;
-    start_clock();
-    block(_PriorSize, _PriorSize);
-    grid_size_x = (int)ceil(double((height) / _PriorSize));
-    grid_size_y = (int)ceil(double((width) / _PriorSize));
-    dehaze(gpu_image, dark, transmission, height, width, block, grid);//dehaze image: ori_image
-    finish_clock();
-    //////////////////
+    	cout<<"Calculating dehaze ..."<<endl;
+    	start_clock();
+    	dehaze(gpu_image, dark, trans, height, width, block, grid);//dehaze image: ori_image
+    	finish_clock();
     
 	/*
 	 * copy back to CPU memory
@@ -220,7 +212,6 @@ int main(int argc, char * argv[])
 		cpu_image[i*3+1] *= 255.f;
 		cpu_image[i*3+2] *= 255.f;
 	}
-	printf("%.2f %.2f %.2f\n", cpu_image[size*3], cpu_image[size*3+1],cpu_image[size*3+2]);
 
 	Mat dest(height, width, CV_32FC3, cpu_image);
 	imwrite(out_name, dest);

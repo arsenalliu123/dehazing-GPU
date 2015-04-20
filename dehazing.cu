@@ -167,27 +167,28 @@ void air_light(float *image, float *dark, int height, int width, dim3 blocks, di
 }
 
 __global__
-void transmission_kernel(float3 *image, float transmission, int height, int width){
+void transmission_kernel(float3 *image, float *transmission, int height, int width){
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
+	int tx, ty, tz;
 	if(x < height && y < width){
 		tx = image[i].x/image[height*width].x;
 		ty = image[i].y/image[height*width].y;
 		tz = image[i].z/image[height*width].z;
-		transmission[i] = 1 - 0.75*min(tx, min(ty, tz));
+		transmission[i] = min(tx, min(ty, tz));
 	}
 }
 
-void transmission(float3 *image, float3 *t, int height, int width, dim3 blocks,dim3 grids){
-	transmission_kernel<<<grids, blocks>>> ((float3 *)image, transmission, height, width);
+void transmission(float *image, float *t, int height, int width, dim3 blocks,dim3 grids){
+	transmission_kernel<<<grids, blocks>>> ((float3 *)image, t, height, width);
 	int window = 7;
 	int shared_size = (blocks.x + window * 2) * (blocks.y + window * 2) * sizeof(float);
-	prior_kernel<<<grids, blocks, shared_size>>>(transmission, height, width, window);
+	prior_kernel<<<grids, blocks, shared_size>>>(t, height, width, window);
 }
 
 __global__
-void dehaze_kernel(float3 *image, float *dark, float t, int height, int width){
+void dehaze_kernel(float3 *image, float *dark, float *t, int height, int width){
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
@@ -198,6 +199,6 @@ void dehaze_kernel(float3 *image, float *dark, float t, int height, int width){
 	}
 }
 
-void dehaze(float3 *image,float *dark, float *t, int height, int width, dim3 blocks,dim3 grids){
-	dehaze_kernel<<<grids, blocks>>> (image, dark, t, height, width);
+void dehaze(float *image,float *dark, float *t, int height, int width, dim3 blocks,dim3 grids){
+	dehaze_kernel<<<grids, blocks>>> ((float3 *)image, dark, t, height, width);
 }
