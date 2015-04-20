@@ -259,9 +259,10 @@ void dehaze_kernel(float3 *image, float *dark, float *t, int height, int width){
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
 	if(x < height && y < width){
-		image[i].x = (image[i].x - image[height*width].x*(1-t[i])) / t[i];
-		image[i].y = (image[i].y - image[height*width].y*(1-t[i])) / t[i];
-		image[i].z = (image[i].z - image[height*width].z*(1-t[i])) / t[i];
+		image[i].x = (image[i].x - image[height*width].x)/max(0.1, t[i]) + image[height*width].x;
+		image[i].y = (image[i].y - image[height*width].y)/max(0.1, t[i]) + image[height*width].y;
+		image[i].z = (image[i].z - image[height*width].z)/max(0.1, t[i]) + image[height*width].z;
+
 	}
 }
 
