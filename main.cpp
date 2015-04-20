@@ -211,7 +211,7 @@ int main(int argc, char * argv[])
 	 */
 	float *dark_image;
 	dark_image = (float *)malloc(size * sizeof(float));
-	CUDA_CHECK_RETURN(cudaMemcpy(dark_image, dark, size * sizeof(float), cudaMemcpyDeviceToHost));
+	CUDA_CHECK_RETURN(cudaMemcpy(dark_image, trans, size * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaMemcpy(cpu_image, gpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(gpu_image));
 	for(int i=0;i<size;i++){
@@ -219,6 +219,7 @@ int main(int argc, char * argv[])
 		cpu_image[i*3+1] *= 255.f;
 		cpu_image[i*3+2] *= 255.f;
 		dark_image[i] *= 255.f;
+		//printf("dark_image[%d]: %.2f\n", i, dark_image[i]);
 	}
 
 	Mat dest(height, width, CV_32FC3, cpu_image);

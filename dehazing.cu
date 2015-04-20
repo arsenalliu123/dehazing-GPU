@@ -171,7 +171,7 @@ void transmission1_kernel(float3 *image, float *t, int height, int width){
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
-	int tx, ty, tz;
+	float tx, ty, tz;
 	if(x < height && y < width){
 		tx = image[i].x/image[height*width].x;
 		ty = image[i].y/image[height*width].y;
@@ -233,7 +233,8 @@ void transmission2_kernel(float *dark, int height, int width, int window){
 						buffer[
 						       (threadIdx.x+startx)*
 						       (blockDim.y + window * 2) +
-						       threadIdx.y + starty], minval);
+						       threadIdx.y + starty
+						], minval);
 				}
 			}
 		}
@@ -244,13 +245,12 @@ void transmission2_kernel(float *dark, int height, int width, int window){
 
 
 
-
 void transmission(float *image, float *t, int height, int width, dim3 blocks,dim3 grids){
 	transmission1_kernel<<<grids, blocks>>> ((float3 *)image, t, height, width);
 	int window = 7;
 	int shared_size = (blocks.x + window * 2) * (blocks.y + window * 2) * sizeof(float);
 	transmission2_kernel<<<grids, blocks, shared_size>>>(t, height, width, window);
-	//transmission2_kernel<<<grids, blocks>>> ((float3 *)image, t, height, width);
+	
 }
 
 __global__
