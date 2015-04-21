@@ -42,22 +42,22 @@ int width=0;			//image Width
 int size=0;			//total number of pixels
 
 char img_name[100]="1.png";
-char out_name[100]="3.png";
+char out_name[100]="2.png";
+char trans_name[100]="3.png";
 char dark_name[100]="4.png";
 /*
  * dehazing procedures
  */
 
 //read from img_name
-Mat *read_image(){
+Mat read_image(){
 
-	Mat *img=new Mat(imread(img_name, CV_LOAD_IMAGE_COLOR));
-	height = img->rows;
-	width = img->cols;
-	size = img->rows*img->cols;
-	Mat *real_img = new Mat(img->rows,img->cols,CV_32FC3);
-	img->convertTo(*real_img,CV_32FC3);
-	*real_img=(*real_img)/255;
+	Mat img = imread(img_name);
+	height = img.rows;
+	width = img.cols;
+	size = img.rows*img.cols;
+	Mat real_img(img.rows,img.cols,CV_32FC3);
+	img.convertTo(real_img,CV_32FC3);
 	return real_img;
 }
 
@@ -97,6 +97,10 @@ void processArgs(int argc, char * argv[])
 			i++;
 			strcpy(dark_name,argv[i]);
 		}
+		else if(strcmp(argv[i],"-t")==0){
+			i++;
+			strcpy(trans_name,argv[i]);
+		}
 		else{
 			printf("use -h to see usage.\n");
 			exit(1);
@@ -132,8 +136,7 @@ int main(int argc, char * argv[])
 	cout<<"Reading Image ..."<<endl;
 	start_clock();
 	//load into a openCV's mat object
-	Mat *img = read_image();
-
+	Mat img = read_image();
 	/* load img into CPU float array and GPU float array */
 	float* cpu_image = (float *)malloc((size+1) * 3 * sizeof(float));
 	if (!cpu_image)
@@ -145,7 +148,7 @@ int main(int argc, char * argv[])
 		for(int j = 0; j < width; j++)
 		{
 			for(int k = 0; k < 3; k++){
-				cpu_image[(i * width + j) * 3 + k] = img->at<float>(i,j,k);
+				cpu_image[(i * width + j) * 3 + k] = img.at<Vec<float,3> >(i,j)[k];
 			}
 		}
 	}
@@ -162,11 +165,11 @@ int main(int argc, char * argv[])
 
 	CUDA_CHECK_RETURN(cudaMemcpy(gpu_image, cpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyHostToDevice));
     
-    ////////////////
-    //float *ori_image = gpu_image;
-    float *trans = NULL;
-    CUDA_CHECK_RETURN(cudaMalloc((void **)(&trans), size * sizeof(float)));
-    /////////////////
+    	////////////////
+    	//float *ori_image = gpu_image;
+    	float *trans = NULL;
+    	CUDA_CHECK_RETURN(cudaMalloc((void **)(&trans), size * sizeof(float)));
+    	/////////////////
 
 	finish_clock();
 	/*
@@ -209,23 +212,30 @@ int main(int argc, char * argv[])
 	/*
 	 * copy back to CPU memory
 	 */
+	float *trans_image;
+	trans_image = (float *)malloc(size * sizeof(float));
+	CUDA_CHECK_RETURN(cudaMemcpy(trans_image, trans, size * sizeof(float), cudaMemcpyDeviceToHost));
+	
 	float *dark_image;
 	dark_image = (float *)malloc(size * sizeof(float));
-	CUDA_CHECK_RETURN(cudaMemcpy(dark_image, trans, size * sizeof(float), cudaMemcpyDeviceToHost));
+	CUDA_CHECK_RETURN(cudaMemcpy(dark_image, dark, size * sizeof(float), cudaMemcpyDeviceToHost));
+	
 	CUDA_CHECK_RETURN(cudaMemcpy(cpu_image, gpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(gpu_image));
 	for(int i=0;i<size;i++){
-		cpu_image[i*3] *= 255.f;
-		cpu_image[i*3+1] *= 255.f;
-		cpu_image[i*3+2] *= 255.f;
-		dark_image[i] *= 255.f;
+		//cpu_image[i*3] *= 255.f;
+		//cpu_image[i*3+1] *= 255.f;
+		//cpu_image[i*3+2] *= 255.f;
+		trans_image[i] *= 255.f;
 		//printf("dark_image[%d]: %.2f\n", i, dark_image[i]);
 	}
 
 	Mat dest(height, width, CV_32FC3, cpu_image);
+	Mat trans_dest(height, width, CV_32FC1, trans_image);
 	Mat dark_dest(height, width, CV_32FC1, dark_image);
 	
 	imwrite(out_name, dest);
+	imwrite(trans_name, trans_dest);
 	imwrite(dark_name, dark_dest);
 	return 0;
 }

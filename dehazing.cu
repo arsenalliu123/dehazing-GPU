@@ -31,7 +31,7 @@ void prior_kernel(float *dark, int height, int width, int window){
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
 	if(x < height && y < width){
-		const int si = (threadIdx.x + window) * (blockDim.y + window * 2) + threadIdx.y + window;
+		/*const int si = (threadIdx.x + window) * (blockDim.y + window * 2) + threadIdx.y + window;
 		buffer[si] = dark[i];
 		if(threadIdx.x < window && IN_GRAPH(x-window, y, height, width) ){
 			buffer[si - (blockDim.y + window * 2) * window] = dark[i - window * width];
@@ -69,7 +69,7 @@ void prior_kernel(float *dark, int height, int width, int window){
 
 		__syncthreads();
 		
-		float minval = 1.0;
+		float minval = 255.0;
 		for(int startx = 0; startx < window * 2 + 1; startx++){
 			for(int starty = 0; starty < window * 2 + 1; starty++){
 				if(IN_GRAPH(x-window+startx, y-window+starty, height, width)){
@@ -80,9 +80,19 @@ void prior_kernel(float *dark, int height, int width, int window){
 						       threadIdx.y + starty], minval);
 				}
 			}
-		}
-		dark[i] = minval;
-
+		}*/
+		float minval = 255.0;
+		for(int startx = 0; startx < window * 2 + 1; startx++){
+			for(int starty = 0; starty < window * 2 + 1; starty++){
+				if(IN_GRAPH(x-window+startx, y-window+starty, height, width)){
+					minval = min(dark[i+(startx-window)*width+starty-window], minval);
+				}
+			}
+		}	
+		
+		buffer[threadIdx.x*blockDim.y + threadIdx.y] = minval;
+		__syncthreads();
+		dark[i] = buffer[threadIdx.x*blockDim.y + threadIdx.y];
 	}
 }
 
@@ -99,7 +109,7 @@ void dark_channel(float *image,float *dark_channel,int height, int width, dim3 b
 
 //first kernel reduce to < 1024 values for next kernel
 __global__
-void dehazing_img_kernel1(
+void airlight_kernel1(
 		float3 *image, float *dark,
 		int height, int width,
 		float3 *int_image, float *int_dark){
@@ -129,7 +139,7 @@ void dehazing_img_kernel1(
 
 //calculate air light
 __global__
-void dehazing_img_kernel2(float3 *image, int size, float3 *int_image, float *int_dark){
+void airlight_kernel2(float3 *image, int size, float3 *int_image, float *int_dark){
 
 	extern __shared__ float3 tmp_image[];
 	float *tmp_dark = (float *)(tmp_image + blockDim.x);
@@ -161,8 +171,8 @@ void air_light(float *image, float *dark, int height, int width, dim3 blocks, di
 	//for(int i=0;i<height*width;i++){printf("%.2f ", xx[i]);}
 	int shared_size_1 = blocks.x*(sizeof(float3)+sizeof(float));
 	int shared_size_2 = grids.x*(sizeof(float3)+sizeof(float));
-	dehazing_img_kernel1<<<grids, blocks, shared_size_1>>> ((float3 *)image, dark, height, width, int_image, int_dark);
-	dehazing_img_kernel2<<<1, grids, shared_size_2>>> ((float3 *)image, height*width, int_image, int_dark);
+	airlight_kernel1<<<grids, blocks, shared_size_1>>> ((float3 *)image, dark, height, width, int_image, int_dark);
+	airlight_kernel2<<<1, grids, shared_size_2>>> ((float3 *)image, height*width, int_image, int_dark);
 
 }
 
@@ -187,6 +197,7 @@ void transmission2_kernel(float *dark, int height, int width, int window){
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
 	if(x < height && y < width){
+		/*
 		const int si = (threadIdx.x + window) * (blockDim.y + window * 2) + threadIdx.y + window;
 		buffer[si] = dark[i];
 		if(threadIdx.x < window && IN_GRAPH(x-window, y, height, width) ){
@@ -238,7 +249,18 @@ void transmission2_kernel(float *dark, int height, int width, int window){
 				}
 			}
 		}
-		dark[i] = 1 - 0.95*minval;
+		dark[i] = 1-0.75*minval;*/
+		float minval = 1.0;
+		for(int startx = 0; startx < window * 2 + 1; startx++){
+			for(int starty = 0; starty < window * 2 + 1; starty++){
+				if(IN_GRAPH(x-window+startx, y-window+starty, height, width)){
+					minval = min(dark[i+(startx-window)*width+starty-window], minval);
+				}
+			}
+		}	
+		buffer[threadIdx.x*blockDim.y + threadIdx.y] = minval;
+		__syncthreads();
+		dark[i] = 1-0.75*buffer[threadIdx.x*blockDim.y + threadIdx.y];
 
 	}
 }
