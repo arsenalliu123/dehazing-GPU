@@ -31,7 +31,7 @@ void prior_kernel(float *dark, float *new_dark, int height, int width, int windo
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
 	if(x < height && y < width){
-		/*const int si = (threadIdx.x + window) * (blockDim.y + window * 2) + threadIdx.y + window;
+		const int si = (threadIdx.x + window) * (blockDim.y + window * 2) + threadIdx.y + window;
 		buffer[si] = dark[i];
 		if(threadIdx.x < window && IN_GRAPH(x-window, y, height, width) ){
 			buffer[si - (blockDim.y + window * 2) * window] = dark[i - window * width];
@@ -80,11 +80,8 @@ void prior_kernel(float *dark, float *new_dark, int height, int width, int windo
 				}
 			}
 		}
-		if( minval - (int)minval > 0){
-			printf("%.2f\n", minval);
-		}
-		new_dark[i] = minval;*/
-
+		new_dark[i] = minval;
+		/*
 		float minval = 255.0;
 		for(int startx = 0; startx < window * 2 + 1; startx++){
 			for(int starty = 0; starty < window * 2 + 1; starty++){
@@ -98,7 +95,7 @@ void prior_kernel(float *dark, float *new_dark, int height, int width, int windo
 
 		buffer[threadIdx.x*blockDim.y + threadIdx.y] = minval;
 		__syncthreads();
-		new_dark[i] = buffer[threadIdx.x*blockDim.y + threadIdx.y];
+		new_dark[i] = buffer[threadIdx.x*blockDim.y + threadIdx.y];*/
 	}
 }
 
@@ -262,7 +259,6 @@ void transmission2_kernel(float *dark, float *new_dark, int height, int width, i
 			}
 		}
 		new_dark[i] = 1-0.95*minval;
-
 	}
 }
 

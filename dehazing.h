@@ -18,6 +18,7 @@
 				cudaGetErrorString(_m_cudaStat), __LINE__, __FILE__);		\
 		exit(1);															\
 	} }
+#define CEIL(X) ((X-(int)(X)) > 0 ? (int)(X+1) : (int)(X))
 
 //dark channel prior
 void dark_channel(

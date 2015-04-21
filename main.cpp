@@ -19,13 +19,6 @@
 #include <unistd.h>
 #include "dehazing.h"
 #include "opencv2/opencv.hpp"
-#define CUDA_CHECK_RETURN(value) {											\
-	cudaError_t _m_cudaStat = value;										\
-	if (_m_cudaStat != cudaSuccess) {										\
-		fprintf(stderr, "Error %s at line %d in file %s\n",					\
-				cudaGetErrorString(_m_cudaStat), __LINE__, __FILE__);		\
-		exit(1);															\
-	} }
 
 using namespace cv;
 using namespace std;
@@ -170,6 +163,7 @@ int main(int argc, char * argv[])
     	float *trans = NULL;
     	CUDA_CHECK_RETURN(cudaMalloc((void **)(&trans), size * sizeof(float)));
     	/////////////////
+	printf("height: %d width: %d\n", height, width);
 
 	finish_clock();
 	/*
@@ -181,15 +175,13 @@ int main(int argc, char * argv[])
 
 	//define the block size and grid size
 	cout<<"Calculating Dark Channel Prior ..."<<endl;
-	printf("%d %d\n", height, width);
 	start_clock();
 		
 	dim3 block(_PriorSize, _PriorSize);
 	
-	int grid_size_x = (int)(double(height) / _PriorSize)+1;
-	int grid_size_y = (int)(double(width) / _PriorSize)+1;
+	int grid_size_x = CEIL(double(height) / _PriorSize);
+	int grid_size_y = CEIL(double(width) / _PriorSize);
 	dim3 grid(grid_size_x, grid_size_y);
-	printf("%d %d\n", grid_size_x, grid_size_y);
 	
 	dark_channel(gpu_image, dark, height, width, block, grid);//dark channel: dark
 	finish_clock();
@@ -197,7 +189,7 @@ int main(int argc, char * argv[])
 	cout<<"Calculating Airlight ..."<<endl;
 	start_clock();
 	dim3 block_air(1024);
-	dim3 grid_air((int)ceil(double(size) / block_air.x));
+	dim3 grid_air(CEIL(double(size) / block_air.x));
 	air_light(gpu_image, dark, height, width, block_air, grid_air);//airlight: gpu_image[height*width]
 	finish_clock();
     
