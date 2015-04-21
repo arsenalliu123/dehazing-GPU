@@ -25,13 +25,13 @@ void dark_channel_kernel(float3 *image, float *dark, int height, int width){
 
 //second kernel calculate min of 15 X 15 ceil
 __global__
-void prior_kernel(float *dark, int height, int width, int window){
+void prior_kernel(float *dark, float *new_dark, int height, int width, int window){
 	extern __shared__ float buffer[];
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
 	if(x < height && y < width){
-		/*const int si = (threadIdx.x + window) * (blockDim.y + window * 2) + threadIdx.y + window;
+		const int si = (threadIdx.x + window) * (blockDim.y + window * 2) + threadIdx.y + window;
 		buffer[si] = dark[i];
 		if(threadIdx.x < window && IN_GRAPH(x-window, y, height, width) ){
 			buffer[si - (blockDim.y + window * 2) * window] = dark[i - window * width];
@@ -80,27 +80,22 @@ void prior_kernel(float *dark, int height, int width, int window){
 						       threadIdx.y + starty], minval);
 				}
 			}
-		}*/
-		float minval = 255.0;
-		for(int startx = 0; startx < window * 2 + 1; startx++){
-			for(int starty = 0; starty < window * 2 + 1; starty++){
-				if(IN_GRAPH(x-window+startx, y-window+starty, height, width)){
-					minval = min(dark[i+(startx-window)*width+starty-window], minval);
-				}
-			}
-		}	
+		}
 		
-		buffer[threadIdx.x*blockDim.y + threadIdx.y] = minval;
-		__syncthreads();
-		dark[i] = buffer[threadIdx.x*blockDim.y + threadIdx.y];
+		new_dark[i] = minval;
 	}
 }
 
 void dark_channel(float *image,float *dark_channel,int height, int width, dim3 blocks,dim3 grids){
-	dark_channel_kernel<<<grids, blocks>>> ((float3 *)image, dark_channel, height, width);
+	
+	float *tmp_dark;
+	cudaMalloc((void **)(&tmp_dark), sizeof(float)*height*width);
+	dark_channel_kernel<<<grids, blocks>>> ((float3 *)image, tmp_dark, height, width);
+	
 	int window = 7;
 	int shared_size = (blocks.x + window * 2) * (blocks.y + window * 2) * sizeof(float);
-	prior_kernel<<<grids, blocks, shared_size>>>(dark_channel, height, width, window);
+	prior_kernel<<<grids, blocks, shared_size>>>(tmp_dark, dark_channel, height, width, window);
+	cudaFree(tmp_dark);
 }
 
 /*
@@ -191,13 +186,12 @@ void transmission1_kernel(float3 *image, float *t, int height, int width){
 }
 
 __global__
-void transmission2_kernel(float *dark, int height, int width, int window){
+void transmission2_kernel(float *dark, float *new_dark, int height, int width, int window){
 	extern __shared__ float buffer[];
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
 	if(x < height && y < width){
-		/*
 		const int si = (threadIdx.x + window) * (blockDim.y + window * 2) + threadIdx.y + window;
 		buffer[si] = dark[i];
 		if(threadIdx.x < window && IN_GRAPH(x-window, y, height, width) ){
@@ -249,18 +243,7 @@ void transmission2_kernel(float *dark, int height, int width, int window){
 				}
 			}
 		}
-		dark[i] = 1-0.75*minval;*/
-		float minval = 1.0;
-		for(int startx = 0; startx < window * 2 + 1; startx++){
-			for(int starty = 0; starty < window * 2 + 1; starty++){
-				if(IN_GRAPH(x-window+startx, y-window+starty, height, width)){
-					minval = min(dark[i+(startx-window)*width+starty-window], minval);
-				}
-			}
-		}	
-		buffer[threadIdx.x*blockDim.y + threadIdx.y] = minval;
-		__syncthreads();
-		dark[i] = 1-0.75*buffer[threadIdx.x*blockDim.y + threadIdx.y];
+		new_dark[i] = 1-0.75*minval;
 
 	}
 }
@@ -268,10 +251,13 @@ void transmission2_kernel(float *dark, int height, int width, int window){
 
 
 void transmission(float *image, float *t, int height, int width, dim3 blocks,dim3 grids){
-	transmission1_kernel<<<grids, blocks>>> ((float3 *)image, t, height, width);
+	float *tmp_trans;
+	cudaMalloc((void **)&tmp_trans, sizeof(float)*height*width);
+	transmission1_kernel<<<grids, blocks>>> ((float3 *)image, tmp_trans, height, width);
 	int window = 7;
 	int shared_size = (blocks.x + window * 2) * (blocks.y + window * 2) * sizeof(float);
-	transmission2_kernel<<<grids, blocks, shared_size>>>(t, height, width, window);
+	transmission2_kernel<<<grids, blocks, shared_size>>>(tmp_trans, t, height, width, window);
+	cudaFree(tmp_trans);
 	
 }
 
