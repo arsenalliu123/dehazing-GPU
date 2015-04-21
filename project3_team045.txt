@@ -1,0 +1,4 @@
+aws emr create-cluster --name "Test cluster hashtagsim" --ami-version 2.4.11 \ --log-uri s3://team045logngram --enable-debugging \
+--instance-groups InstanceGroupType=MASTER,InstanceCount=1,InstanceType=c1.medium InstanceGroupType=CORE,InstanceCount=4,InstanceType=c1.medium \
+--steps Type=CUSTOM_JAR,Jar=s3://team045fc/18645-proj3-0.1-latest.jar,Args=["-input","s3://team045t1m/tweets1m.txt","- output","s3://team045output/hashtagtest7","-program","hashtagsim","-tmpdir","tmp"] \
+--auto-terminate
