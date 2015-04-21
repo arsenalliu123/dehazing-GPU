@@ -181,13 +181,15 @@ int main(int argc, char * argv[])
 
 	//define the block size and grid size
 	cout<<"Calculating Dark Channel Prior ..."<<endl;
+	printf("%d %d\n", height, width);
 	start_clock();
 		
 	dim3 block(_PriorSize, _PriorSize);
 	
-	int grid_size_x = (int)ceil(double((height) / _PriorSize));
-	int grid_size_y = (int)ceil(double((width) / _PriorSize));
+	int grid_size_x = (int)(double(height) / _PriorSize)+1;
+	int grid_size_y = (int)(double(width) / _PriorSize)+1;
 	dim3 grid(grid_size_x, grid_size_y);
+	printf("%d %d\n", grid_size_x, grid_size_y);
 	
 	dark_channel(gpu_image, dark, height, width, block, grid);//dark channel: dark
 	finish_clock();
@@ -215,19 +217,22 @@ int main(int argc, char * argv[])
 	float *trans_image;
 	trans_image = (float *)malloc(size * sizeof(float));
 	CUDA_CHECK_RETURN(cudaMemcpy(trans_image, trans, size * sizeof(float), cudaMemcpyDeviceToHost));
+	CUDA_CHECK_RETURN(cudaFree(trans));
 	
 	float *dark_image;
 	dark_image = (float *)malloc(size * sizeof(float));
 	CUDA_CHECK_RETURN(cudaMemcpy(dark_image, dark, size * sizeof(float), cudaMemcpyDeviceToHost));
+	CUDA_CHECK_RETURN(cudaFree(dark));
 	
 	CUDA_CHECK_RETURN(cudaMemcpy(cpu_image, gpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(gpu_image));
+	printf("air light: %.2f %.2f %.2f\n", cpu_image[3*size], cpu_image[3*size+1], cpu_image[3*size+2]);;
+	
 	for(int i=0;i<size;i++){
 		//cpu_image[i*3] *= 255.f;
 		//cpu_image[i*3+1] *= 255.f;
 		//cpu_image[i*3+2] *= 255.f;
 		trans_image[i] *= 255.f;
-		//printf("dark_image[%d]: %.2f\n", i, dark_image[i]);
 	}
 
 	Mat dest(height, width, CV_32FC3, cpu_image);

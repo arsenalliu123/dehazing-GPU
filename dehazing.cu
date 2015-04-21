@@ -31,14 +31,14 @@ void prior_kernel(float *dark, float *new_dark, int height, int width, int windo
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
 	if(x < height && y < width){
-		const int si = (threadIdx.x + window) * (blockDim.y + window * 2) + threadIdx.y + window;
+		/*const int si = (threadIdx.x + window) * (blockDim.y + window * 2) + threadIdx.y + window;
 		buffer[si] = dark[i];
 		if(threadIdx.x < window && IN_GRAPH(x-window, y, height, width) ){
 			buffer[si - (blockDim.y + window * 2) * window] = dark[i - window * width];
 			if(threadIdx.y < window &&
 				IN_GRAPH(x-window, y-window, height, width) ){
 				buffer[si - (blockDim.y + window * 2) * window - window]
-			       = dark[i - window * width - window];
+				= dark[i - window * width - window];
 			}
 			if(threadIdx.y >= blockDim.y - window &&
 				IN_GRAPH(x-window, y+window, height, width) ){
@@ -74,15 +74,31 @@ void prior_kernel(float *dark, float *new_dark, int height, int width, int windo
 			for(int starty = 0; starty < window * 2 + 1; starty++){
 				if(IN_GRAPH(x-window+startx, y-window+starty, height, width)){
 				minval = min(
-						buffer[
-						       (threadIdx.x+startx)*
-						       (blockDim.y + window * 2) +
-						       threadIdx.y + starty], minval);
+						buffer[(threadIdx.x+startx)*(blockDim.y + window * 2) + threadIdx.y + starty],
+						 minval
+					);
 				}
 			}
 		}
-		
-		new_dark[i] = minval;
+		if( minval - (int)minval > 0){
+			printf("%.2f\n", minval);
+		}
+		new_dark[i] = minval;*/
+
+		float minval = 255.0;
+		for(int startx = 0; startx < window * 2 + 1; startx++){
+			for(int starty = 0; starty < window * 2 + 1; starty++){
+				if(IN_GRAPH(x-window+startx, y-window+starty, height, width)){
+					minval = min(dark[i+(startx-window)*width+starty-window], minval);
+					//if(minval-(int)minval>0){printf("%d %d %.2f\n", x-window+startx, y-window+starty, minval);}
+				}
+			}
+		}	
+		//if(minval-(int)minval>0){printf("%.2f\n", minval);}
+
+		buffer[threadIdx.x*blockDim.y + threadIdx.y] = minval;
+		__syncthreads();
+		new_dark[i] = buffer[threadIdx.x*blockDim.y + threadIdx.y];
 	}
 }
 
@@ -146,11 +162,13 @@ void airlight_kernel2(float3 *image, int size, float3 *int_image, float *int_dar
 			if(tmp_dark[threadIdx.x + stride] > tmp_dark[threadIdx.x]){
 				tmp_dark[threadIdx.x] = tmp_dark[threadIdx.x + stride];
 				tmp_image[threadIdx.x] = tmp_image[threadIdx.x + stride];
+			//printf("%.2f %.2f %.2f %.2f\n", tmp_image[0].x,tmp_image[0].y,tmp_image[0].z, tmp_dark[0]);
 			}
 		}
 		__syncthreads();
 	}
 	if(threadIdx.x == 0){
+		//float factor = 1.0;
 		image[size] = tmp_image[threadIdx.x];
 	}
 }
@@ -243,7 +261,7 @@ void transmission2_kernel(float *dark, float *new_dark, int height, int width, i
 				}
 			}
 		}
-		new_dark[i] = 1-0.75*minval;
+		new_dark[i] = 1-0.95*minval;
 
 	}
 }
@@ -258,7 +276,6 @@ void transmission(float *image, float *t, int height, int width, dim3 blocks,dim
 	int shared_size = (blocks.x + window * 2) * (blocks.y + window * 2) * sizeof(float);
 	transmission2_kernel<<<grids, blocks, shared_size>>>(tmp_trans, t, height, width, window);
 	cudaFree(tmp_trans);
-	
 }
 
 __global__
