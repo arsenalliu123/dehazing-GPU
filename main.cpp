@@ -10,6 +10,7 @@
 #else
         #include <sys/io.h>
 #endif
+
 #include "iostream"
 #include "time.h"
 #include "string.h"
@@ -26,18 +27,17 @@ using namespace std;
 // Define Const
 clock_t start , finish ;
 float lambda=0.0001;	//lambda
-int _PriorSize=15;		//the window size of dark channel
-double _topbright=0.01;//the top rate of bright pixel in dark channel
 double _w=0.95;			//w
-float t0=0.01;			//lowest transmission
 int height=0;			//image Height
 int width=0;			//image Width
 int size=0;			//total number of pixels
+int blockdim = 32;
 
 char img_name[100]="1.png";
 char out_name[100]="2.png";
 char trans_name[100]="3.png";
 char dark_name[100]="4.png";
+
 /*
  * dehazing procedures
  */
@@ -128,15 +128,15 @@ int main(int argc, char * argv[])
 	}
 
 	cout<<"Reading Image ..."<<endl;
+
 	start_clock();
-	//load into a openCV's mat object
 	Mat img = read_image();
-	//Mat img_gray_t0 = img;
-	//Mat img_gray_t1;
-	//img_gray_t0.convertTo(img_gray_t1, CV_32FC1);//single channel: img_gray_t1
+	
+	float* cpu_image = (float *)malloc((size+1) * 3 * sizeof(float));
+	float *dark_image = (float *)malloc(size * sizeof(float));
+	float *trans_image = (float *)malloc(size * sizeof(float));
 
 	/* load img into CPU float array and GPU float array */
-	float* cpu_image = (float *)malloc((size+1) * 3 * sizeof(float));
 	if (!cpu_image)
 	{
 		std::cout << "ERROR: Failed to allocate memory" << std::endl;
@@ -154,6 +154,7 @@ int main(int argc, char * argv[])
 	cpu_image[size+1] = 0;
 	cpu_image[size+2] = 0;
 
+	
 	float *gpu_image = NULL;
 	float *dark = NULL;
 	float *img_gray = NULL;
@@ -166,9 +167,6 @@ int main(int argc, char * argv[])
 
 	CUDA_CHECK_RETURN(cudaMemcpy(gpu_image, cpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyHostToDevice));
 	
-    
-    	////////////////
-    	//float *ori_image = gpu_image;
     float *trans = NULL;
     CUDA_CHECK_RETURN(cudaMalloc((void **)(&trans), size * sizeof(float)));
 
@@ -188,73 +186,80 @@ int main(int argc, char * argv[])
 	//define the block size and grid size
 	cout<<"Calculating Dark Channel Prior ..."<<endl;
 	start_clock();
-		
-	dim3 block(_PriorSize, _PriorSize);
-	
-	int grid_size_x = CEIL(double(height) / _PriorSize);
-	int grid_size_y = CEIL(double(width) / _PriorSize);
+	dim3 block(blockdim, blockdim);
+	int grid_size_x = CEIL(double(height) / blockdim);
+	int grid_size_y = CEIL(double(width) / blockdim);
 	dim3 grid(grid_size_x, grid_size_y);
-	
-	dark_channel(gpu_image, img_gray, dark, height, width, block, grid);//dark channel: dark
+	//dark channel: dark
+	dark_channel(gpu_image, img_gray, dark, height, width, block, grid);
 	finish_clock();
 
 	cout<<"Calculating Airlight ..."<<endl;
 	start_clock();
 	dim3 block_air(1024);
 	dim3 grid_air(CEIL(double(size) / block_air.x));
-	air_light(gpu_image, dark, height, width, block_air, grid_air);//airlight: gpu_image[height*width]
+	//airlight: gpu_image[height*width]
+	air_light(gpu_image, dark, height, width, block_air, grid_air);
 	finish_clock();
     
 	cout<<"Calculating transmission ..."<<endl;
 	start_clock();
-    
-    transmission(gpu_image, trans, height, width, block, grid);//t: transmission
-	
-	dim3 block_guide(32,32);
-	int grid_size_x_guide = CEIL(double(height) / 32);
-	int grid_size_y_guide = CEIL(double(width) / 32);
-	dim3 grid_guide(grid_size_x_guide, grid_size_y_guide);
+    //t: transmission
+    transmission(gpu_image, trans, height, width, block, grid);
+	finish_clock();
 
-    gfilter(filter, img_gray, trans, height, width, block_guide, grid_guide);//filter: guided imaging filter result
-    
+	cout<<"Refining transmission ..."<<endl;
+	dim3 block_guide(blockdim, blockdim);
+	int grid_size_x_guide = CEIL(double(height) / blockdim);
+	int grid_size_y_guide = CEIL(double(width) / blockdim);
+	dim3 grid_guide(grid_size_x_guide, grid_size_y_guide);
+	//filter: guided imaging filter result
+    gfilter(filter, img_gray, trans, height, width, block_guide, grid_guide);
 	finish_clock();
     
 	cout<<"Calculating dehaze ..."<<endl;
-    	start_clock();
-    	dehaze(gpu_image, dark, filter, height, width, block, grid);//dehaze image: ori_image
-    	finish_clock();
+    start_clock();
+    dehaze(gpu_image, dark, filter, height, width, block, grid);//dehaze image: ori_image
+    finish_clock();
     
+
 	/*
 	 * copy back to CPU memory
 	 */
-	float *trans_image;
-	trans_image = (float *)malloc(size * sizeof(float));
+	cout<<"Copy back to host memory ..."<<endl;
+	start_clock();
+	
+	
 	CUDA_CHECK_RETURN(cudaMemcpy(trans_image, filter, size * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(trans));
 	
-	float *dark_image;
-	dark_image = (float *)malloc(size * sizeof(float));
 	CUDA_CHECK_RETURN(cudaMemcpy(dark_image, dark, size * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(dark));
 	
 	CUDA_CHECK_RETURN(cudaMemcpy(cpu_image, gpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(gpu_image));
 	
-	printf("air light: %.2f %.2f %.2f\n", cpu_image[3*size], cpu_image[3*size+1], cpu_image[3*size+2]);;
+	printf("air light: %.2f %.2f %.2f\n", 
+		cpu_image[3*size], 
+		cpu_image[3*size+1], 
+		cpu_image[3*size+2]);;
 	
 	for(int i=0;i<size;i++){
-		//cpu_image[i*3] *= 255.f;
-		//cpu_image[i*3+1] *= 255.f;
-		//cpu_image[i*3+2] *= 255.f;
 		trans_image[i] *= 255.f;
 	}
 
 	Mat dest(height, width, CV_32FC3, cpu_image);
 	Mat trans_dest(height, width, CV_32FC1, trans_image);
 	Mat dark_dest(height, width, CV_32FC1, dark_image);
+
+	free(cpu_image);
+	free(trans_image);
+	free(dark_image);
 	
 	imwrite(out_name, dest);
 	imwrite(trans_name, trans_dest);
 	imwrite(dark_name, dark_dest);
+
+	finish_clock();
 	return 0;
 }
