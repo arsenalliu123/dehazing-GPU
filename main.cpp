@@ -149,7 +149,7 @@ int main(int argc, char * argv[])
 			for(int k = 0; k < 3; k++){
 				cpu_image[(i * width + j) * 3 + k] = img.at<Vec<float,3> >(i,j)[k];
 			}
-			img_gray[i*width + j] = img_gray_t1(i,j);
+			img_gray[i*width + j] = img_gray_t1.at(i,j);
 		}
 	}
 	cpu_image[size] = 0;
