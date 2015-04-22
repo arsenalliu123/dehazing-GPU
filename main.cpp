@@ -239,11 +239,13 @@ int main(int argc, char * argv[])
 	CUDA_CHECK_RETURN(cudaMemcpy(cpu_image, gpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(gpu_image));
 	
+	/*
 	printf("air light: %.2f %.2f %.2f\n", 
 		cpu_image[3*size], 
 		cpu_image[3*size+1], 
 		cpu_image[3*size+2]);;
-	
+	*/
+
 	for(int i=0;i<size;i++){
 		trans_image[i] *= 255.f;
 	}
@@ -252,13 +254,14 @@ int main(int argc, char * argv[])
 	Mat trans_dest(height, width, CV_32FC1, trans_image);
 	Mat dark_dest(height, width, CV_32FC1, dark_image);
 
-	free(cpu_image);
-	free(trans_image);
-	free(dark_image);
 	
 	imwrite(out_name, dest);
 	imwrite(trans_name, trans_dest);
 	imwrite(dark_name, dark_dest);
+	
+	free(cpu_image);
+	free(trans_image);
+	free(dark_image);
 
 	finish_clock();
 	return 0;

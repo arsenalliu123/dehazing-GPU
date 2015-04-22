@@ -9,7 +9,7 @@
 #define min(x,y) ((x<y)?x:y)
 #define max(x,y) ((x>y)?x:y)
 #define WINDOW 7
-#define R 7
+#define R 15
 
 /*
  * dark_channel host wrapper and kernel
@@ -348,7 +348,7 @@ __global__
 void boxfilter_kernel2(float *img_in,
 	float *img_res,
 	float *img_in2,
-	float *imgres2,
+	float *img_res2,
 	float *patch,
 	int r,
 	int height,
@@ -398,8 +398,8 @@ void boxfilter_kernel2(float *img_in,
 	}
 }
 
-__global__//(I, P, ImulP, ImulI, height, width)
-void matmul_kernel(float *a, float *b, float *res1, float *res2 int height, int width){
+__global__
+void matmul_kernel(float *a, float *b, float *res1, float *res2, int height, int width){
 //b=a.*b
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
