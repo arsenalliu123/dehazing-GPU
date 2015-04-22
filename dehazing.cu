@@ -328,7 +328,7 @@ void compab_kernel(float *a, float *b, float *cov_IP, float *var_I, float *mean_
 	const int i = x * width + y;
 	if(x < height && y < width){
 		a[i] = cov_IP[i]/var_I[i] + 0.000001;
-		b = mean_P - a[i]*mean_I[i];
+		b[i] = mean_P[i] - a[i]*mean_I[i];
 	}
 
 }
@@ -356,7 +356,7 @@ void guidedfilter(float *result, float *I, float *P, int r, int height, int widt
 	int shared_size = (blocks.x + window * 2) * (blocks.y + window * 2) * sizeof(float);
 	prior_kernel<<<grids, blocks, shared_size>>>(tmp_dark, dark_channel, height, width, window);
 	cudaFree(tmp_dark);*/
-	int r = 60;
+	//int r = 60;
 	//float eps = 10^-6;
 	
 	float *N;//
@@ -408,7 +408,7 @@ void guidedfilter(float *result, float *I, float *P, int r, int height, int widt
 	cudaFree(ImulI);
 	var_kernel<<<grids, blocks>>> (mean_II, mean_I, mean_I, var_I, height, width);//compute var_I=mean_II-mean_I^2
 
-	compab_kernel<<<grids, blocks>>>(a, b, cov_IP, var_I, mean_P, mean_I, height, width){//compute a&b
+	compab_kernel<<<grids, blocks>>>(a, b, cov_IP, var_I, mean_P, mean_I, height, width);//compute a&b
 	cudaFree(cov_IP);
 	cudaFree(var_I);
 	cudaFree(mean_I);
