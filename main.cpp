@@ -251,15 +251,15 @@ int main(int argc, char * argv[])
 	Mat dest(height, width, CV_32FC3, cpu_image);
 	Mat trans_dest(height, width, CV_32FC1, trans_image);
 	Mat dark_dest(height, width, CV_32FC1, dark_image);
-
-	free(cpu_image);
-	free(trans_image);
-	free(dark_image);
 	
 	imwrite(out_name, dest);
 	imwrite(trans_name, trans_dest);
 	imwrite(dark_name, dark_dest);
 
+	free(cpu_image);
+	free(trans_image);
+	free(dark_image);
+	
 	finish_clock();
 	return 0;
 }
