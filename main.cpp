@@ -214,7 +214,7 @@ int main(int argc, char * argv[])
     
     cout<<"Calculating dehaze ..."<<endl;
     start_clock();
-    dehaze(gpu_image, dark, trans, height, width, block, grid);//dehaze image: ori_image
+    dehaze(gpu_image, dark, filter, height, width, block, grid);//dehaze image: ori_image
     finish_clock();
     
 	/*

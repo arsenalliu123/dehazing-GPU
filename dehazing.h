@@ -41,7 +41,7 @@ void air_light(
 		);
 void dehaze(float *image,float *dark, float *t, int height, int width, dim3 blocks, dim3 grids);
 void transmission(float *image, float *t, int height, int width, dim3 blocks, dim3 grids);
-guidedfilter(float *filter, float *img_gray, float *trans, int height, int width, dim3 blocks, dim3 grids);//filter: guided imaging filter result
+void guidedfilter(float *filter, float *img_gray, float *trans, int height, int width, dim3 blocks, dim3 grids);//filter: guided imaging filter result
 
 #endif /* DEHAZING_H_ */
 
