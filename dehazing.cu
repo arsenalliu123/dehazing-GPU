@@ -359,7 +359,7 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	float *N;//
 	float *ones;//
 	float *mean_I;//
-	// float *mean_P;//
+	float *mean_P;//
 	// float *mean_IP;
 	// float *cov_IP;//
 	// float *mean_II;
@@ -374,7 +374,7 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	cudaMemset(&ones, 1, sizeof(float)*height*width);
 	
 	cudaMalloc((void **)(&mean_I), sizeof(float)*height*width);
-	// cudaMalloc((void **)(&mean_P), sizeof(float)*height*width);
+	cudaMalloc((void **)(&mean_P), sizeof(float)*height*width);
 	// cudaMalloc((void **)(&mean_IP), sizeof(float)*height*width);
 	// cudaMalloc((void **)(&cov_IP), sizeof(float)*height*width);
 	// cudaMalloc((void **)(&mean_II), sizeof(float)*height*width);
@@ -385,10 +385,9 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	// cudaMalloc((void **)(&mean_b), sizeof(float)*height*width);
 	
 	boxfilter_kernel<<<grids, blocks>>> (ones, N, ones, r, height, width);//compute N
-	//cudaFree(ones);
-	//I, mean_I
-	//boxfilter_kernel<<<grids, blocks>>> (I, mean_I, ones, r, height, width);//compute mean_I
-	 //boxfilter_kernel<<<grids, blocks>>> (P, mean_P, N, r, height, width);//compute mean_P
+	cudaFree(ones);
+	boxfilter_kernel<<<grids, blocks>>> (I, mean_I, ones, r, height, width);//compute mean_I
+	boxfilter_kernel<<<grids, blocks>>> (P, mean_P, N, r, height, width);//compute mean_P
 
 
 	 //float *ImulP;
