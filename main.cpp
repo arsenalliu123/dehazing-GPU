@@ -211,23 +211,22 @@ int main(int argc, char * argv[])
     
 	cout<<"Calculating transmission ..."<<endl;
 	start_clock();
-    transmission(gpu_image, trans, height, width, block, grid);//t: transmission
-    //gfilter(filter, img_gray, trans, height, width, block_air, grid_air);//filter: guided imaging filter result
+    	transmission(gpu_image, trans, height, width, block, grid);//t: transmission
+    	gfilter(filter, img_gray, trans, height, width, block_air, grid_air);//filter: guided imaging filter result
     
-
-    finish_clock();
+	finish_clock();
     
-    cout<<"Calculating dehaze ..."<<endl;
-    start_clock();
-    dehaze(gpu_image, dark, trans, height, width, block, grid);//dehaze image: ori_image
-    finish_clock();
+	cout<<"Calculating dehaze ..."<<endl;
+    	start_clock();
+    	dehaze(gpu_image, dark, filter, height, width, block, grid);//dehaze image: ori_image
+    	finish_clock();
     
 	/*
 	 * copy back to CPU memory
 	 */
 	float *trans_image;
 	trans_image = (float *)malloc(size * sizeof(float));
-	CUDA_CHECK_RETURN(cudaMemcpy(trans_image, trans, size * sizeof(float), cudaMemcpyDeviceToHost));
+	CUDA_CHECK_RETURN(cudaMemcpy(trans_image, filter, size * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(trans));
 	
 	float *dark_image;

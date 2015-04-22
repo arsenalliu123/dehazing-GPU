@@ -320,7 +320,7 @@ void boxfilter_kernel(float *img_in, float *img_res, float *patch, int r, int he
 			}
 		}
 
-		img_res[i] = val/((2*r+1)*(2*r+1))/patch[i];
+		img_res[i] = val/patch[i];//((2*r+1)*(2*r+1));
 	}
 }
 
