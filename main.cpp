@@ -210,7 +210,7 @@ int main(int argc, char * argv[])
 	start_clock();
     transmission(gpu_image, trans, height, width, block, grid);//t: transmission
     
-    guidedfilter(filter, img_gray, trans, height, width, block, grid);//filter: guided imaging filter result
+    gfilter(filter, img_gray, trans, height, width, block, grid);//filter: guided imaging filter result
     
     finish_clock();
     

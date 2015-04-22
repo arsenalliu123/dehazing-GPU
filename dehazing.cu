@@ -343,7 +343,7 @@ void result_kernel(float *result, float *mean_a, float *I, float *mean_b, int he
 		result[i] = mean_a[i]*I[i] + mean_b[i];
 	}
 }
-void guidedfilter(float *result, float *I, float *P, int r, int height, int width, dim3 blocks, dim3 grids){
+void gfilter(float *result, float *I, float *P, int r, int height, int width, dim3 blocks, dim3 grids){
 	//I: guided image - origin gray scale image - 1 channel
 	//P: imaged need to be filtered - transmission image - 1 channel
 	//result: refined trans image - 1 channel
