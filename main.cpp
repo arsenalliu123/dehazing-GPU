@@ -212,7 +212,12 @@ int main(int argc, char * argv[])
 	cout<<"Calculating transmission ..."<<endl;
 	start_clock();
     	transmission(gpu_image, trans, height, width, block, grid);//t: transmission
-    	gfilter(filter, img_gray, trans, height, width, block_air, grid_air);//filter: guided imaging filter result
+	dim3 block_guide(32,32);
+	int grid_size_x_guide = CEIL(double(height) / 32);
+	int grid_size_y_guide = CEIL(double(width) / 32);
+	dim3 grid_guide(grid_size_x_guide, grid_size_y_guide);
+	
+    	gfilter(filter, img_gray, trans, height, width, block_guide, grid_guide);//filter: guided imaging filter result
     
 	finish_clock();
     

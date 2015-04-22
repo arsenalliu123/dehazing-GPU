@@ -15,6 +15,14 @@
  */
 //first kernel calculate min of RGB
 
+void printinfo(float *dark, int height, int width){
+	float *xx = (float *)malloc(sizeof(float)*height*width);
+	CUDA_CHECK_RETURN(cudaMemcpy(xx, dark, height * width * sizeof(float), cudaMemcpyDeviceToHost));
+	for(int i=0;i<height*width;i++){printf("%.2f ", xx[i]);}
+	
+
+}
+
 __global__
 void dark_kernel1(float3 *image, float *dark, int height, int width){
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -293,6 +301,16 @@ void dehaze(float *image,float *dark, float *t, int height, int width, dim3 bloc
 }
 
 __global__
+void setones(float *img_in, int height, int width, float val){
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int i = x * width + y;
+	if(x < height && y < width){
+		img_in[i] = val;
+	}
+}
+
+__global__
 void boxfilter_kernel(float *img_in, float *img_res, float *patch, int r, int height, int width){//r: local window radius
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -300,7 +318,7 @@ void boxfilter_kernel(float *img_in, float *img_res, float *patch, int r, int he
 	extern __shared__ float buffer[];
 	if(x < height && y < width){
 		padding(
-			img_in, buffer,
+			buffer, img_in,
 			x, y,
 			threadIdx.x, threadIdx.y,
 			r,
@@ -319,7 +337,7 @@ void boxfilter_kernel(float *img_in, float *img_res, float *patch, int r, int he
 				}
 			}
 		}
-
+		
 		img_res[i] = val/patch[i];//((2*r+1)*(2*r+1));
 	}
 }
@@ -377,7 +395,7 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	//P: imaged need to be filtered - transmission image - 1 channel
 	//result: refined trans image - 1 channel
 
-	int r = 7;
+	int r = 30;
 	//float eps = 10^-6;
 	
 	float *N;//
@@ -392,11 +410,10 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	float *b;//
 	float *mean_a;//
 	float *mean_b;//
-
+	
 	cudaMalloc((void **)(&N), sizeof(float)*height*width);
 	cudaMalloc((void **)(&ones), sizeof(float)*height*width);
-	cudaMemset(&ones, 1, sizeof(float)*height*width);
-	
+
 	cudaMalloc((void **)(&mean_I), sizeof(float)*height*width);
 	cudaMalloc((void **)(&mean_P), sizeof(float)*height*width);
 	cudaMalloc((void **)(&mean_IP), sizeof(float)*height*width);
@@ -407,10 +424,12 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	cudaMalloc((void **)(&b), sizeof(float)*height*width);
 	cudaMalloc((void **)(&mean_a), sizeof(float)*height*width);
 	cudaMalloc((void **)(&mean_b), sizeof(float)*height*width);
-
-	int shared_size = (blocks.x + r * 2) * (blocks.y + r * 2) * sizeof(float);
 	
+	setones<<<grids, blocks>>> (ones, height, width, 1.0);
+	//printinfo(ones, height, width);
+	int shared_size = (blocks.x + r * 2) * (blocks.y + r * 2) * sizeof(float);
 	boxfilter_kernel<<<grids, blocks, shared_size>>> (ones, N, ones, r, height, width);//compute N
+	
 	cudaFree(ones);
 	boxfilter_kernel<<<grids, blocks, shared_size>>> (I, mean_I, N, r, height, width);//compute mean_I
 	boxfilter_kernel<<<grids, blocks, shared_size>>> (P, mean_P, N, r, height, width);//compute mean_P
@@ -441,6 +460,6 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	cudaFree(a);
 	cudaFree(b);
 	result_kernel<<<grids, blocks>>> (result, mean_a, I, mean_b, height, width);//return result
-	// cudaFree(mean_a);
-	// cudaFree(mean_b);
-	}
+	cudaFree(mean_a);
+	cudaFree(mean_b);
+}
