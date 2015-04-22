@@ -227,7 +227,7 @@ int main(int argc, char * argv[])
 	 */
 	float *trans_image;
 	trans_image = (float *)malloc(size * sizeof(float));
-	CUDA_CHECK_RETURN(cudaMemcpy(trans_image, trans, size * sizeof(float), cudaMemcpyDeviceToHost));
+	CUDA_CHECK_RETURN(cudaMemcpy(trans_image, filter, size * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(trans));
 	
 	float *dark_image;
@@ -237,6 +237,7 @@ int main(int argc, char * argv[])
 	
 	CUDA_CHECK_RETURN(cudaMemcpy(cpu_image, gpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(gpu_image));
+	
 	printf("air light: %.2f %.2f %.2f\n", cpu_image[3*size], cpu_image[3*size+1], cpu_image[3*size+2]);;
 	
 	for(int i=0;i<size;i++){
