@@ -11,7 +11,6 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
-
 #define CUDA_CHECK_RETURN(value) {											\
 	cudaError_t _m_cudaStat = value;										\
 	if (_m_cudaStat != cudaSuccess) {										\
@@ -19,6 +18,7 @@
 				cudaGetErrorString(_m_cudaStat), __LINE__, __FILE__);		\
 		exit(1);															\
 	} }
+
 #define CEIL(X) ((X-(int)(X)) > 0 ? (int)(X+1) : (int)(X))
 
 //dark channel prior
@@ -41,7 +41,9 @@ void air_light(
 		dim3 blocks,
 		dim3 grids
 		);
-void dehaze(float *image,
+
+void dehaze(
+	float *image,
 	float *dark,
 	float *t,
 	int height,
@@ -49,8 +51,25 @@ void dehaze(float *image,
 	dim3 blocks,
 	dim3 grids
 	);
-void transmission(float *image, float *t, int height, int width, dim3 blocks, dim3 grids);
-void gfilter(float *filter, float *img_gray, float *trans, int height, int width, dim3 blocks, dim3 grids);//filter: guided imaging filter result
+
+void transmission(
+	float *image,
+	float *t,
+	int height,
+	int width,
+	dim3 blocks,
+	dim3 grids
+	);
+
+void gfilter(
+	float *filter,
+	float *img_gray,
+	float *trans,
+	int height,
+	int width,
+	dim3 blocks,
+	dim3 grids
+	);//filter: guided imaging filter result
 
 #endif /* DEHAZING_H_ */
 

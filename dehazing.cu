@@ -396,7 +396,7 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	//P: imaged need to be filtered - transmission image - 1 channel
 	//result: refined trans image - 1 channel
 
-	int r = 30;
+	int r = 7;
 	//float eps = 10^-6;
 	
 	float *N;//
