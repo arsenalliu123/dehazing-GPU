@@ -395,7 +395,7 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	boxfilter_kernel<<<grids, blocks>>> (ones, N, ones, r, height, width);//compute N
 	//cudaFree(ones);
 	//I, mean_I
-	boxfilter_kernel<<<grids, blocks>>> (P, mean_I, ones, r, height, width);//compute mean_I
+	boxfilter_kernel<<<grids, blocks>>> (I, N, ones, r, height, width);//compute mean_I
 	 //boxfilter_kernel<<<grids, blocks>>> (P, mean_P, N, r, height, width);//compute mean_P
 
 
