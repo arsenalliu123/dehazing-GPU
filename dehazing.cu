@@ -392,7 +392,7 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	cudaMalloc((void **)(&mean_a), sizeof(float)*height*width);
 	cudaMalloc((void **)(&mean_b), sizeof(float)*height*width);
 	
-	boxfilter_kernel<<<grids, blocks>>> (ones, N, ones, r);//compute N
+	boxfilter_kernel<<<grids, blocks>>> (ones, N, ones, r, height, width);//compute N
 	cudaFree(ones);
 
 	 boxfilter_kernel<<<grids, blocks>>> (I, mean_I, N, r);//compute mean_I
