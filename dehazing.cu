@@ -35,7 +35,7 @@ void dark_kernel1(float3 *image, float *img_grey, float *dark, int height, int w
 }
 
 __device__
-void padding(float *buffer,float *dark,
+void padding(float *buffer, float *dark,
 	int x, int y,
 	int tx, int ty,
 	int window,
