@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include "dehazing.h"
 #include "opencv2/opencv.hpp"
+#include "opencv2/gpu/gpu.hpp"
 
 using namespace cv;
 using namespace std;
@@ -211,9 +212,9 @@ int main(int argc, char * argv[])
 	cout<<"Calculating transmission ..."<<endl;
 	start_clock();
     transmission(gpu_image, trans, height, width, block, grid);//t: transmission
-    
     gfilter(filter, img_gray, trans, height, width, block_air, grid_air);//filter: guided imaging filter result
     
+
     finish_clock();
     
     cout<<"Calculating dehaze ..."<<endl;

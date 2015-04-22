@@ -11,6 +11,7 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 
+
 #define CUDA_CHECK_RETURN(value) {											\
 	cudaError_t _m_cudaStat = value;										\
 	if (_m_cudaStat != cudaSuccess) {										\
