@@ -131,13 +131,13 @@ int main(int argc, char * argv[])
 	start_clock();
 	//load into a openCV's mat object
 	Mat img = read_image();
-	Mat img_gray_t0 = img;
-	Mat img_gray_t1;
-	img_gray_t0.convertTo(img_gray_t1, CV_32FC1);//single channel: img_gray_t1
+	//Mat img_gray_t0 = img;
+	//Mat img_gray_t1;
+	//img_gray_t0.convertTo(img_gray_t1, CV_32FC1);//single channel: img_gray_t1
 
 	/* load img into CPU float array and GPU float array */
 	float* cpu_image = (float *)malloc((size+1) * 3 * sizeof(float));
-	float* img_gray = (float *)malloc(size * sizeof(float));
+	float* cpu_img_gray = (float *)malloc(size * sizeof(float));
 	if (!cpu_image)
 	{
 		std::cout << "ERROR: Failed to allocate memory" << std::endl;
@@ -149,7 +149,7 @@ int main(int argc, char * argv[])
 			for(int k = 0; k < 3; k++){
 				cpu_image[(i * width + j) * 3 + k] = img.at<Vec<float,3> >(i,j)[k];
 			}
-			img_gray[i*width + j] = img_gray_t1.at<float>(i,j);
+			cpu_img_gray[i*width + j] = img.at<Vec<float,3> >(i,j)[0];
 		}
 	}
 	cpu_image[size] = 0;
@@ -158,14 +158,16 @@ int main(int argc, char * argv[])
 
 	float *gpu_image = NULL;
 	float *dark = NULL;
-	
+	float *img_gray = NULL;
 	//size+1 for storing the airlight
 	CUDA_CHECK_RETURN(cudaMalloc((void **)(&gpu_image), ((size+1) * 3) * sizeof(float)));
 
 	CUDA_CHECK_RETURN(cudaMalloc((void **)(&dark), size * sizeof(float)));
 
 	CUDA_CHECK_RETURN(cudaMemcpy(gpu_image, cpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyHostToDevice));
-
+	
+	CUDA_CHECK_RETURN(cudaMalloc((void **)(&img_gray),size * sizeof(float)));
+	CUDA_CHECK_RETURN(cudaMemcpy(img_gray, cpu_img_gray, size * sizeof(float), cudaMemcpyHostToDevice));
 	
     
     	////////////////
