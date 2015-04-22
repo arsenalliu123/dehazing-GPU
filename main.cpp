@@ -54,6 +54,7 @@ Mat read_image(){
 	return real_img;
 }
 
+
 //************* Utility Functions **********
 //Print Matrix
 void printMat(char * name,Mat m)
@@ -130,6 +131,10 @@ int main(int argc, char * argv[])
 	start_clock();
 	//load into a openCV's mat object
 	Mat img = read_image();
+	Mat img_gray_t = img;
+	Mat img_gray;
+	img_gray_t.convertTo(img_gray, CV_32FC1);//single channel: img_gray
+
 	/* load img into CPU float array and GPU float array */
 	float* cpu_image = (float *)malloc((size+1) * 3 * sizeof(float));
 	if (!cpu_image)
@@ -151,17 +156,23 @@ int main(int argc, char * argv[])
 
 	float *gpu_image = NULL;
 	float *dark = NULL;
+	
 	//size+1 for storing the airlight
 	CUDA_CHECK_RETURN(cudaMalloc((void **)(&gpu_image), ((size+1) * 3) * sizeof(float)));
 
 	CUDA_CHECK_RETURN(cudaMalloc((void **)(&dark), size * sizeof(float)));
 
 	CUDA_CHECK_RETURN(cudaMemcpy(gpu_image, cpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyHostToDevice));
+
+	
     
     	////////////////
     	//float *ori_image = gpu_image;
-    	float *trans = NULL;
-    	CUDA_CHECK_RETURN(cudaMalloc((void **)(&trans), size * sizeof(float)));
+    float *trans = NULL;
+    CUDA_CHECK_RETURN(cudaMalloc((void **)(&trans), size * sizeof(float)));
+
+    float *filter = NULL;
+    CUDA_CHECK_RETURN(cudaMalloc((void **)(&filter), size * sizeof(float)));
     	/////////////////
 	printf("height: %d width: %d\n", height, width);
 
@@ -194,14 +205,17 @@ int main(int argc, char * argv[])
 	finish_clock();
     
 	cout<<"Calculating transmission ..."<<endl;
-    	start_clock();
-    	transmission(gpu_image, trans, height, width, block, grid);//t: transmission
-    	finish_clock();
+	start_clock();
+    transmission(gpu_image, trans, height, width, block, grid);//t: transmission
     
-    	cout<<"Calculating dehaze ..."<<endl;
-    	start_clock();
-    	dehaze(gpu_image, dark, trans, height, width, block, grid);//dehaze image: ori_image
-    	finish_clock();
+    guidedfilter(filter, img_gray, trans, height, width, block, grid);//filter: guided imaging filter result
+    
+    finish_clock();
+    
+    cout<<"Calculating dehaze ..."<<endl;
+    start_clock();
+    dehaze(gpu_image, dark, trans, height, width, block, grid);//dehaze image: ori_image
+    finish_clock();
     
 	/*
 	 * copy back to CPU memory

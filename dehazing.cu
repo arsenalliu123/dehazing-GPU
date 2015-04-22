@@ -290,3 +290,135 @@ void dehaze_kernel(float3 *image, float *dark, float *t, int height, int width){
 void dehaze(float *image,float *dark, float *t, int height, int width, dim3 blocks,dim3 grids){
 	dehaze_kernel<<<grids, blocks>>> ((float3 *)image, dark, t, height, width);
 }
+
+__global__
+void boxfilter_kernel(float *img_in, float *img_res, float *patch, int r){//r: local window radius
+	img_res = img_in;
+}
+
+__global__
+void matmul_kernel(float *a, float *b, float *res, int height, int width){
+//b=a.*b
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int i = x * width + y;
+	if(x < height && y < width){
+		res[i] = a[i]*b[i];
+	}
+}
+
+__global__
+void var_kernel(float *a, float *b, float *c, float *d, int height, int width){
+//d = a-b.*c
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int i = x * width + y;
+	if(x < height && y < width){
+		d[i] = a[i]-b[i]*c[i];
+	}
+}
+
+__global__
+void compab_kernel(float *a, float *b, float *cov_IP, float *var_I, float *mean_P, float *mean_I, int height, int width){
+//a=cov_IP./(var_I.+eps);
+	//eps = 10^-6
+//b=mean_P-a.*mean_I;
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int i = x * width + y;
+	if(x < height && y < width){
+		a[i] = cov_IP[i]/var_I[i] + 0.000001;
+		b = mean_P - a[i]*mean_I[i];
+	}
+
+}
+
+__global__
+void result_kernel(float *result, float *mean_a, float *I, float *mean_b, int height, int width){
+//mean_a = mean_a.*I+mean_b
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int i = x * width + y;
+	if(x < height && y < width){
+		result[i] = mean_a[i]*I[i] + mean_b[i];
+	}
+}
+void guidedfilter(float *result, float *I, float *P, int r, int height, int width, dim3 blocks, dim3 grids){
+	//I: guided image - origin gray scale image - 1 channel
+	//P: imaged need to be filtered - transmission image - 1 channel
+	//result: refined trans image - 1 channel
+
+	/*float *tmp_dark;
+	cudaMalloc((void **)(&tmp_dark), sizeof(float)*height*width);
+	dark_channel_kernel<<<grids, blocks>>> ((float3 *)image, tmp_dark, height, width);
+	
+	int window = 7;
+	int shared_size = (blocks.x + window * 2) * (blocks.y + window * 2) * sizeof(float);
+	prior_kernel<<<grids, blocks, shared_size>>>(tmp_dark, dark_channel, height, width, window);
+	cudaFree(tmp_dark);*/
+	int r = 60;
+	//float eps = 10^-6;
+	
+	float *N;//
+	float *ones;//
+	float *mean_I;//
+	float *mean_P;//
+	float *mean_IP;
+	float *cov_IP;//
+	float *mean_II;
+	float *var_I;//
+	float *a;//
+	float *b;//
+	float *mean_a;//
+	float *mean_b;//
+
+	cudaMalloc((void **)(&N), sizeof(float)*height*width);
+	cudaMalloc((void **)(&ones), sizeof(float)*height*width);
+	cudaMemset(&ones, 1, sizeof(float)*height*width);
+	
+	cudaMalloc((void **)(&mean_I), sizeof(float)*height*width);
+	cudaMalloc((void **)(&mean_P), sizeof(float)*height*width);
+	cudaMalloc((void **)(&mean_IP), sizeof(float)*height*width);
+	cudaMalloc((void **)(&cov_IP), sizeof(float)*height*width);
+	cudaMalloc((void **)(&mean_II), sizeof(float)*height*width);
+	cudaMalloc((void **)(&var_I), sizeof(float)*height*width);
+	cudaMalloc((void **)(&a), sizeof(float)*height*width);
+	cudaMalloc((void **)(&b), sizeof(float)*height*width);
+	cudaMalloc((void **)(&mean_a), sizeof(float)*height*width);
+	cudaMalloc((void **)(&mean_b), sizeof(float)*height*width);
+	
+	boxfilter_kernel<<<grids, blocks>>> (ones, N, ones, r);//compute N
+	cudaFree(ones);
+
+	boxfilter_kernel<<<grids, blocks>>> (I, mean_I, N, r);//compute mean_I
+	boxfilter_kernel<<<grids, blocks>>> (P, mean_P, N, r);//compute mean_P
+
+
+	float *ImulP;
+	cudaMalloc((void **)(&ImulP), sizeof(float)*height*width);
+	matmul_kernel<<<grids, blocks>>> (I, P, ImulP, height, width);// compute P = I.*P
+	boxfilter_kernel<<<grids, blocks>>> (ImulP, mean_IP, N, r);//compute mean_IP
+	cudaFree(ImulP);
+	var_kernel<<<grids, blocks>>> (mean_IP, mean_I, mean_P, cov_IP, height, width);//compute cov_IP=mean_Ip-mean_I*mean_P
+
+	float *ImulI;
+	cudaMalloc((void **)(&ImulI), sizeof(float)*height*width);
+	matmul_kernel<<<grids, blocks>>> (I, I, ImulI, height, width);// compute I = I*I
+	boxfilter_kernel<<<grids, blocks>>> (ImulI, mean_II, N, r);//compute mean_II
+	cudaFree(ImulI);
+	var_kernel<<<grids, blocks>>> (mean_II, mean_I, mean_I, var_I, height, width);//compute var_I=mean_II-mean_I^2
+
+	compab_kernel<<<grids, blocks>>>(a, b, cov_IP, var_I, mean_P, mean_I, height, width){//compute a&b
+	cudaFree(cov_IP);
+	cudaFree(var_I);
+	cudaFree(mean_I);
+	cudaFree(mean_P);
+	boxfilter_kernel<<<grids, blocks>>> (a, mean_a, N, r);//compute mean_II
+	boxfilter_kernel<<<grids, blocks>>> (b, mean_b, N, r);//compute mean_II
+	cudaFree(N);
+	cudaFree(a);
+	cudaFree(b);
+	result_kernel<<<grids, blocks>>> (result, mean_a, I, mean_b, height, width);//return result
+	cudaFree(mean_a);
+	cudaFree(mean_b);
+	}
