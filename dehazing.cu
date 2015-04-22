@@ -297,7 +297,7 @@ void boxfilter_kernel(float *img_in, float *img_res, float *patch, int r, int he
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
-	extern __shared__ buffer[];
+	extern __shared__ float buffer[];
 	if(x < height && y < width){
 		padding(
 			img_in, buffer,
@@ -410,23 +410,23 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 
 	int shared_size = (blocks.x + r * 2) * (blocks.y + window * 2) * sizeof(float);
 	
-	boxfilter_kernel<<<grids, blocks>>> (ones, N, ones, r, height, width);//compute N
+	boxfilter_kernel<<<grids, blocks, shared_size>>> (ones, N, ones, r, height, width);//compute N
 	cudaFree(ones);
-	boxfilter_kernel<<<grids, blocks>>> (I, mean_I, N, r, height, width);//compute mean_I
-	boxfilter_kernel<<<grids, blocks>>> (P, mean_P, N, r, height, width);//compute mean_P
+	boxfilter_kernel<<<grids, blocks, shared_size>>> (I, mean_I, N, r, height, width);//compute mean_I
+	boxfilter_kernel<<<grids, blocks, shared_size>>> (P, mean_P, N, r, height, width);//compute mean_P
 
 
 	float *ImulP;
 	cudaMalloc((void **)(&ImulP), sizeof(float)*height*width);
 	matmul_kernel<<<grids, blocks>>> (I, P, ImulP, height, width);// compute P = I.*P
-	boxfilter_kernel<<<grids, blocks>>> (ImulP, mean_IP, N, r, height, width);//compute mean_IP
+	boxfilter_kernel<<<grids, blocks, shared_size>>> (ImulP, mean_IP, N, r, height, width);//compute mean_IP
 	cudaFree(ImulP);
 	var_kernel<<<grids, blocks>>> (mean_IP, mean_I, mean_P, cov_IP, height, width);//compute cov_IP=mean_Ip-mean_I*mean_P
 
 	float *ImulI;
 	cudaMalloc((void **)(&ImulI), sizeof(float)*height*width);
 	matmul_kernel<<<grids, blocks>>> (I, I, ImulI, height, width);// compute I = I*I
-	boxfilter_kernel<<<grids, blocks>>> (ImulI, mean_II, N, r, height, width);//compute mean_II
+	boxfilter_kernel<<<grids, blocks, shared_size>>> (ImulI, mean_II, N, r, height, width);//compute mean_II
 	cudaFree(ImulI);
 	var_kernel<<<grids, blocks>>> (mean_II, mean_I, mean_I, var_I, height, width);//compute var_I=mean_II-mean_I^2
 
@@ -435,8 +435,8 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	cudaFree(var_I);
 	cudaFree(mean_I);
 	cudaFree(mean_P);
-	boxfilter_kernel<<<grids, blocks>>> (a, mean_a, N, r, height, width);//compute mean_II
-	boxfilter_kernel<<<grids, blocks>>> (b, mean_b, N, r, height, width);//compute mean_II
+	boxfilter_kernel<<<grids, blocks, shared_size>>> (a, mean_a, N, r, height, width);//compute mean_II
+	boxfilter_kernel<<<grids, blocks, shared_size>>> (b, mean_b, N, r, height, width);//compute mean_II
 	cudaFree(N);
 	cudaFree(a);
 	cudaFree(b);
