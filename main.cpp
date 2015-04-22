@@ -131,12 +131,13 @@ int main(int argc, char * argv[])
 	start_clock();
 	//load into a openCV's mat object
 	Mat img = read_image();
-	Mat img_gray_t = img;
-	Mat img_gray;
-	img_gray_t.convertTo(img_gray, CV_32FC1);//single channel: img_gray
+	Mat img_gray_t0 = img;
+	Mat img_gray_t1;
+	img_gray_t0.convertTo(img_gray_t1, CV_32FC1);//single channel: img_gray_t1
 
 	/* load img into CPU float array and GPU float array */
 	float* cpu_image = (float *)malloc((size+1) * 3 * sizeof(float));
+	float* img_gray = (float *)malloc(size * sizeof(float));
 	if (!cpu_image)
 	{
 		std::cout << "ERROR: Failed to allocate memory" << std::endl;
@@ -148,6 +149,7 @@ int main(int argc, char * argv[])
 			for(int k = 0; k < 3; k++){
 				cpu_image[(i * width + j) * 3 + k] = img.at<Vec<float,3> >(i,j)[k];
 			}
+			img_gray[i*width + j] = img_gray_t1(i,j);
 		}
 	}
 	cpu_image[size] = 0;
