@@ -353,14 +353,6 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	//P: imaged need to be filtered - transmission image - 1 channel
 	//result: refined trans image - 1 channel
 
-	/*float *tmp_dark;
-	cudaMalloc((void **)(&tmp_dark), sizeof(float)*height*width);
-	dark_channel_kernel<<<grids, blocks>>> ((float3 *)image, tmp_dark, height, width);
-	
-	int window = 7;
-	int shared_size = (blocks.x + window * 2) * (blocks.y + window * 2) * sizeof(float);
-	prior_kernel<<<grids, blocks, shared_size>>>(tmp_dark, dark_channel, height, width, window);
-	cudaFree(tmp_dark);*/
 	int r = 60;
 	//float eps = 10^-6;
 	
