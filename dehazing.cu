@@ -33,6 +33,7 @@ void padding(float *buffer,float *dark,
 	int bdimx, int bdimy,
 	int height, int width){
 	const int si = (tx + window) * (bdimy + window * 2) + ty + window;
+	int i = x*width + y;
 	buffer[si] = dark[i];
 	if(tx < window && IN_GRAPH(x-window, y, height, width) ){
 		buffer[si - (bdimy + window * 2) * window] = dark[i - window * width];
@@ -318,7 +319,7 @@ void boxfilter_kernel(float *img_in, float *img_res, float *patch, int r, int he
 				}
 			}
 		}
-		
+
 		img_res[i] = val/((2*r+1)*(2*r+1));
 	}
 }
