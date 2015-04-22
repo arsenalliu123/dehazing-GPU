@@ -302,7 +302,7 @@ void boxfilter_kernel(float *img_in, float *img_res, float *patch, int r, int he
 		padding(
 			img_in, buffer,
 			x, y,
-			threadIdx.x, thread.y,
+			threadIdx.x, threadIdx.y,
 			r,
 			blockDim.x, blockDim.y,
 			height, width);
@@ -408,7 +408,7 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	cudaMalloc((void **)(&mean_a), sizeof(float)*height*width);
 	cudaMalloc((void **)(&mean_b), sizeof(float)*height*width);
 
-	int shared_size = (blocks.x + r * 2) * (blocks.y + window * 2) * sizeof(float);
+	int shared_size = (blocks.x + r * 2) * (blocks.y + r * 2) * sizeof(float);
 	
 	boxfilter_kernel<<<grids, blocks, shared_size>>> (ones, N, ones, r, height, width);//compute N
 	cudaFree(ones);
