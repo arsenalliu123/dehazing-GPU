@@ -386,13 +386,13 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	
 	boxfilter_kernel<<<grids, blocks>>> (ones, N, ones, r, height, width);//compute N
 	cudaFree(ones);
-	boxfilter_kernel<<<grids, blocks>>> (I, mean_I, ones, r, height, width);//compute mean_I
+	boxfilter_kernel<<<grids, blocks>>> (I, mean_I, N, r, height, width);//compute mean_I
 	boxfilter_kernel<<<grids, blocks>>> (P, mean_P, N, r, height, width);//compute mean_P
 
 
-	 //float *ImulP;
-	 //cudaMalloc((void **)(&ImulP), sizeof(float)*height*width);
-	 //matmul_kernel<<<grids, blocks>>> (I, P, ImulP, height, width);// compute P = I.*P
+	float *ImulP;
+	cudaMalloc((void **)(&ImulP), sizeof(float)*height*width);
+	matmul_kernel<<<grids, blocks>>> (I, P, ImulP, height, width);// compute P = I.*P
 	// boxfilter_kernel<<<grids, blocks>>> (ImulP, mean_IP, N, r);//compute mean_IP
 	// cudaFree(ImulP);
 	// var_kernel<<<grids, blocks>>> (mean_IP, mean_I, mean_P, cov_IP, height, width);//compute cov_IP=mean_Ip-mean_I*mean_P
