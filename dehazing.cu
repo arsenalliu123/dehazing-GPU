@@ -293,7 +293,12 @@ void dehaze(float *image,float *dark, float *t, int height, int width, dim3 bloc
 
 __global__
 void boxfilter_kernel(float *img_in, float *img_res, float *patch, int r){//r: local window radius
-	img_res = img_in;
+	const int x = blockIdx.x * blockDim.x + threadIdx.x;
+	const int y = blockIdx.y * blockDim.y + threadIdx.y;
+	const int i = x * width + y;
+	if(x < height && y < width){
+		img_res[i] = img_in[i];
+	}
 }
 
 __global__
@@ -396,7 +401,7 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 
 	 float *ImulP;
 	 cudaMalloc((void **)(&ImulP), sizeof(float)*height*width);
-	 matmul_kernel<<<grids, blocks>>> (I, P, ImulP, height, width);// compute P = I.*P
+	 //matmul_kernel<<<grids, blocks>>> (I, P, ImulP, height, width);// compute P = I.*P
 	// boxfilter_kernel<<<grids, blocks>>> (ImulP, mean_IP, N, r);//compute mean_IP
 	// cudaFree(ImulP);
 	// var_kernel<<<grids, blocks>>> (mean_IP, mean_I, mean_P, cov_IP, height, width);//compute cov_IP=mean_Ip-mean_I*mean_P
