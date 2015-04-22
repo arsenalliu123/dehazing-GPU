@@ -355,7 +355,7 @@ void compab_kernel(float *a, float *b, float *cov_IP, float *var_I, float *mean_
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
 	if(x < height && y < width){
-		a[i] = cov_IP[i]/var_I[i] + 0.000001;
+		a[i] = cov_IP[i]/(var_I[i] + 0.000001);
 		b[i] = mean_P[i] - a[i]*mean_I[i];
 	}
 
