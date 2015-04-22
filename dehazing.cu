@@ -292,7 +292,7 @@ void dehaze(float *image,float *dark, float *t, int height, int width, dim3 bloc
 }
 
 __global__
-void boxfilter_kernel(float *img_in, float *img_res, float *patch, int r){//r: local window radius
+void boxfilter_kernel(float *img_in, float *img_res, float *patch, int r, int height, int width){//r: local window radius
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
