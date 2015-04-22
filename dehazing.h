@@ -41,6 +41,7 @@ void air_light(
 		dim3 grids
 		);
 void dehaze(float *image,
+	float *img_grey,
 	float *dark,
 	float *t,
 	int height,

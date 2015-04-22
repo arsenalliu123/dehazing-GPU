@@ -24,12 +24,13 @@ void printinfo(float *dark, int height, int width){
 }
 
 __global__
-void dark_kernel1(float3 *image, float *dark, int height, int width){
+void dark_kernel1(float3 *image, float *img_grey, float *dark, int height, int width){
 	const int x = blockIdx.x * blockDim.x + threadIdx.x;
 	const int y = blockIdx.y * blockDim.y + threadIdx.y;
 	const int i = x * width + y;
 	if(x < height && y < width){
 		dark[i] = min(image[i].x, min(image[i].y, image[i].z));
+		img_grey[i] = image[i].x * 0.299 +  image[i].y * 0.587 + image[i].z * 0.114;
 	}
 }
 
@@ -131,12 +132,12 @@ void dark_kernel2(float *dark, float *new_dark, int height, int width, int windo
 	}
 }
 
-void dark_channel(float *image,float *dark_channel,int height, int width, dim3 blocks,dim3 grids){
+void dark_channel(float *image, float *img_grey, float *dark_channel, int height, int width, dim3 blocks, dim3 grids){
 	
 	float *tmp_dark;
 	cudaMalloc((void **)(&tmp_dark), sizeof(float)*height*width);
 	
-	dark_kernel1<<<grids, blocks>>> ((float3 *)image, tmp_dark, height, width);
+	dark_kernel1<<<grids, blocks>>> ((float3 *)image, img_grey, tmp_dark, height, width);
 	
 	int window = WINDOW;
 	int shared_size = (blocks.x + window * 2) * (blocks.y + window * 2) * sizeof(float);

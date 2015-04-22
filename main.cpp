@@ -138,7 +138,6 @@ int main(int argc, char * argv[])
 
 	/* load img into CPU float array and GPU float array */
 	float* cpu_image = (float *)malloc((size+1) * 3 * sizeof(float));
-	float* cpu_img_gray = (float *)malloc(size * sizeof(float));
 	if (!cpu_image)
 	{
 		std::cout << "ERROR: Failed to allocate memory" << std::endl;
@@ -150,7 +149,6 @@ int main(int argc, char * argv[])
 			for(int k = 0; k < 3; k++){
 				cpu_image[(i * width + j) * 3 + k] = img.at<Vec<float,3> >(i,j)[k];
 			}
-			cpu_img_gray[i*width + j] = img.at<Vec<float,3> >(i,j)[0];
 		}
 	}
 	cpu_image[size] = 0;
@@ -164,11 +162,10 @@ int main(int argc, char * argv[])
 	CUDA_CHECK_RETURN(cudaMalloc((void **)(&gpu_image), ((size+1) * 3) * sizeof(float)));
 
 	CUDA_CHECK_RETURN(cudaMalloc((void **)(&dark), size * sizeof(float)));
-
-	CUDA_CHECK_RETURN(cudaMemcpy(gpu_image, cpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyHostToDevice));
 	
 	CUDA_CHECK_RETURN(cudaMalloc((void **)(&img_gray),size * sizeof(float)));
-	CUDA_CHECK_RETURN(cudaMemcpy(img_gray, cpu_img_gray, size * sizeof(float), cudaMemcpyHostToDevice));
+
+	CUDA_CHECK_RETURN(cudaMemcpy(gpu_image, cpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyHostToDevice));
 	
     
     	////////////////
@@ -199,7 +196,7 @@ int main(int argc, char * argv[])
 	int grid_size_y = CEIL(double(width) / _PriorSize);
 	dim3 grid(grid_size_x, grid_size_y);
 	
-	dark_channel(gpu_image, dark, height, width, block, grid);//dark channel: dark
+	dark_channel(gpu_image, img_gray, dark, height, width, block, grid);//dark channel: dark
 	finish_clock();
 
 	cout<<"Calculating Airlight ..."<<endl;
@@ -211,13 +208,15 @@ int main(int argc, char * argv[])
     
 	cout<<"Calculating transmission ..."<<endl;
 	start_clock();
-    	transmission(gpu_image, trans, height, width, block, grid);//t: transmission
+    
+    transmission(gpu_image, trans, height, width, block, grid);//t: transmission
+	
 	dim3 block_guide(32,32);
 	int grid_size_x_guide = CEIL(double(height) / 32);
 	int grid_size_y_guide = CEIL(double(width) / 32);
 	dim3 grid_guide(grid_size_x_guide, grid_size_y_guide);
-	
-    	gfilter(filter, img_gray, trans, height, width, block_guide, grid_guide);//filter: guided imaging filter result
+
+    gfilter(filter, img_gray, trans, height, width, block_guide, grid_guide);//filter: guided imaging filter result
     
 	finish_clock();
     
