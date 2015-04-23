@@ -508,7 +508,7 @@ void gfilter(float *result, float *I, float *P, int height, int width, dim3 bloc
 	cudaMalloc((void **)(&ImulP), sizeof(float)*height*width);
 	cudaMalloc((void **)(&ImulI), sizeof(float)*height*width);
 	matmul_kernel<<<grids, blocks>>> (I, P, ImulP, ImulI, height, width);// compute P = I.*P
-	boxfilter_kernel2<<<grids, blocks, shared_size>>> (ImulP, mean_IP, ImulI, mean_II, N, r, height, width);//compute mean_IP
+	boxfilter_kernel2<<<grids, blocks, shared_size2>>> (ImulP, mean_IP, ImulI, mean_II, N, r, height, width);//compute mean_IP
 	cudaFree(ImulP);
 	
 	//var_kernel<<<grids, blocks>>> (mean_IP, mean_I, mean_P, cov_IP, height, width);//compute cov_IP=mean_Ip-mean_I*mean_P
