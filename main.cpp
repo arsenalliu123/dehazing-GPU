@@ -76,7 +76,7 @@ void processArgs(int argc, char * argv[])
 	for(int i=1;i<argc;i++)
 	{
 		if(strcmp(argv[i], "-h")==0){
-			printf("usage: -o output -i input.\n");
+			printf("usage: -o output -i input -r filtered_transmission -t transmission.\n");
 			exit(1);
 		}
 		else if(strcmp(argv[i],"-o")==0){
@@ -87,11 +87,11 @@ void processArgs(int argc, char * argv[])
 			i++;
 			strcpy(img_name,argv[i]);
 		}
-		else if(strcmp(argv[i],"-d")==0){
+		else if(strcmp(argv[i],"-t")==0){
 			i++;
 			strcpy(dark_name,argv[i]);
 		}
-		else if(strcmp(argv[i],"-t")==0){
+		else if(strcmp(argv[i],"-r")==0){
 			i++;
 			strcpy(trans_name,argv[i]);
 		}
@@ -167,11 +167,11 @@ int main(int argc, char * argv[])
 
 	CUDA_CHECK_RETURN(cudaMemcpy(gpu_image, cpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyHostToDevice));
 	
-    float *trans = NULL;
-    CUDA_CHECK_RETURN(cudaMalloc((void **)(&trans), size * sizeof(float)));
+    	float *trans = NULL;
+    	CUDA_CHECK_RETURN(cudaMalloc((void **)(&trans), size * sizeof(float)));
 
-    float *filter = NULL;
-    CUDA_CHECK_RETURN(cudaMalloc((void **)(&filter), size * sizeof(float)));
+    	float *filter = NULL;
+    	CUDA_CHECK_RETURN(cudaMalloc((void **)(&filter), size * sizeof(float)));
     	/////////////////
 	printf("height: %d width: %d\n", height, width);
 
@@ -204,8 +204,8 @@ int main(int argc, char * argv[])
     
 	cout<<"Calculating transmission ..."<<endl;
 	start_clock();
-    //t: transmission
-    transmission(gpu_image, trans, height, width, block, grid);
+    	//t: transmission
+    	transmission(gpu_image, trans, height, width, block, grid);
 	finish_clock();
 
 	cout<<"Refining transmission ..."<<endl;
@@ -214,13 +214,13 @@ int main(int argc, char * argv[])
 	int grid_size_y_guide = CEIL(double(width) / blockdim);
 	dim3 grid_guide(grid_size_x_guide, grid_size_y_guide);
 	//filter: guided imaging filter result
-    gfilter(filter, img_gray, trans, height, width, block_guide, grid_guide);
+    	gfilter(filter, img_gray, trans, height, width, block_guide, grid_guide);
 	finish_clock();
     
 	cout<<"Calculating dehaze ..."<<endl;
-    start_clock();
-    dehaze(gpu_image, dark, filter, height, width, block, grid);//dehaze image: ori_image
-    finish_clock();
+    	start_clock();
+    	dehaze(gpu_image, dark, filter, height, width, block, grid);//dehaze image: ori_image
+    	finish_clock();
     
 
 	/*
@@ -229,12 +229,13 @@ int main(int argc, char * argv[])
 	cout<<"Copy back to host memory ..."<<endl;
 	start_clock();
 	
+	CUDA_CHECK_RETURN(cudaFree(dark));
 	
 	CUDA_CHECK_RETURN(cudaMemcpy(trans_image, filter, size * sizeof(float), cudaMemcpyDeviceToHost));
-	CUDA_CHECK_RETURN(cudaFree(trans));
+	CUDA_CHECK_RETURN(cudaFree(filter));
 	
-	CUDA_CHECK_RETURN(cudaMemcpy(dark_image, dark, size * sizeof(float), cudaMemcpyDeviceToHost));
-	CUDA_CHECK_RETURN(cudaFree(dark));
+	CUDA_CHECK_RETURN(cudaMemcpy(dark_image, trans, size * sizeof(float), cudaMemcpyDeviceToHost));
+	CUDA_CHECK_RETURN(cudaFree(trans));
 	
 	CUDA_CHECK_RETURN(cudaMemcpy(cpu_image, gpu_image, ((size+1) * 3) * sizeof(float), cudaMemcpyDeviceToHost));
 	CUDA_CHECK_RETURN(cudaFree(gpu_image));
@@ -248,6 +249,7 @@ int main(int argc, char * argv[])
 
 	for(int i=0;i<size;i++){
 		trans_image[i] *= 255.f;
+		dark_image[i] *= 255.f;
 	}
 
 	Mat dest(height, width, CV_32FC3, cpu_image);
