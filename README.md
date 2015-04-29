@@ -16,7 +16,4 @@ make clean && make
 Debug/dehazing -h
 ```
 
-##Todo
-+ Add transmission image refinition
-
 **Developed by Yichen Liu and Yin Lin**
