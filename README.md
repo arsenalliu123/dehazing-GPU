@@ -1,5 +1,7 @@
 #CUDA implementation of dehazing algorithm using dark channel prior
 
+Dehazing algorithm implementation on CUDA.
+
 ##Feature
 - OpenCV to read images and processing them on GPU
 - Shared memory optimization
