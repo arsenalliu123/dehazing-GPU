@@ -1,5 +1,7 @@
 #CUDA implementation of dehazing algorithm using dark channel prior
 
+Dehazing algorithm implemented on CUDA.
+
 ##Feature
 - OpenCV to read images and processing them on GPU
 - Shared memory optimization
@@ -15,8 +17,5 @@ cd dehazing-GPU
 make clean && make
 Debug/dehazing -h
 ```
-
-##Todo
-+ Add transmission image refinition
 
 **Developed by Yichen Liu and Yin Lin**
